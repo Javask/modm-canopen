@@ -55,10 +55,25 @@ private:
     static inline constinit SdoServer<CanopenDevice> sdoServer_;
     static inline uint8_t nodeId_{};
 
-public: // TODO: make private, add public API to configure default PDO mappings
     static inline constinit std::array<ReceivePdo<OD>, 4> receivePdos_;
     static inline constinit std::array<TransmitPdo<OD>, 4> transmitPdos_;
 
+public:
+    using ReceivePdo_t = ReceivePdo<OD>;
+    using TransmitPdo_t = TransmitPdo<OD>;
+
+    static inline void setReceivePdoActive(uint8_t index, bool active){
+        receivePdos_[index].setActive(active);
+    }
+    static inline void setTransmitPdoActive(uint8_t index, bool active){
+        transmitPdos_[index].setActive(active);
+    }
+    static inline void setReceivePdo(uint8_t index, ReceivePdo_t rpdo){
+        receivePdos_[index] = rpdo;
+    }
+    static inline void setTransmitPdo(uint8_t index, TransmitPdo_t tpdo){
+        transmitPdos_[index] = tpdo;
+    }
 };
 
 }
