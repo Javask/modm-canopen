@@ -19,7 +19,12 @@ template<typename OD, typename... Protocols>
 class CanopenDevice
 {
 public:
+    static constexpr uint8_t MaxTPDOCount = 4;
+    static constexpr uint8_t MaxRPDOCount = 4;
+
     using ObjectDictionary = OD;
+    using ReceivePdo_t = ReceivePdo<OD>;
+    using TransmitPdo_t = TransmitPdo<OD>;
 
     static void initialize(uint8_t nodeId) { setNodeId(nodeId); }
 
@@ -55,12 +60,10 @@ private:
     static inline constinit SdoServer<CanopenDevice> sdoServer_;
     static inline uint8_t nodeId_{};
 
-    static inline constinit std::array<ReceivePdo<OD>, 4> receivePdos_;
-    static inline constinit std::array<TransmitPdo<OD>, 4> transmitPdos_;
+    static inline constinit std::array<ReceivePdo_t, MaxRPDOCount> receivePdos_;
+    static inline constinit std::array<TransmitPdo_t, MaxTPDOCount> transmitPdos_;
 
 public:
-    using ReceivePdo_t = ReceivePdo<OD>;
-    using TransmitPdo_t = TransmitPdo<OD>;
 
     static inline void setReceivePdoActive(uint8_t index, bool active){
         receivePdos_[index].setActive(active);
