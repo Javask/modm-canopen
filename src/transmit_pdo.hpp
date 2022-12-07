@@ -51,26 +51,10 @@ class TransmitPdo;
 template<typename OD>
 modm::can::Message createPdoMessage(const TransmitPdo<OD>& pdo, uint16_t canId);
 
-// TODO: de-duplicate code with ReceivePdo
 template<typename OD>
-class TransmitPdo
+class TransmitPdo :public PdoObject<OD>
 {
-private:
-    static constexpr std::size_t MaxMappingCount{8};
-
 public:
-    void setCanId(uint32_t canId);
-
-    SdoErrorCode setActive();
-    void setInactive();
-    bool isActive() const;
-
-    SdoErrorCode setMappingCount(uint_fast8_t count);
-    uint_fast8_t mappingCount() const;
-
-    SdoErrorCode setMapping(uint_fast8_t index, PdoMapping mapping);
-    PdoMapping mapping(uint_fast8_t index) const;
-
     void sync();
     void setValueUpdated();
 
@@ -83,21 +67,10 @@ public:
     SdoErrorCode setInhibitTime(uint16_t inhibitTime_100us);
     uint16_t eventTimeout() const;
     uint16_t inhibitTime() const;
-
-    uint32_t cobId() const { return active_ ? canId_ : (canId_ | 0x8000'0000); }
-    uint32_t canId() const { return canId_; }
 private:
-    bool active_{false};
-    uint32_t canId_{};
-    uint_fast8_t mappingCount_{};
-    std::array<PdoMapping, MaxMappingCount> mappings_{};
-    std::array<DataType, MaxMappingCount> mappingTypes_{};
     TransmitMode transmitMode_{};
     SendOnEvent sendOnEvent_{};
     bool sync_{false};
-
-    SdoErrorCode validateMapping(PdoMapping mapping);
-    SdoErrorCode validateMappings();
 
     template<typename Callback>
     std::optional<modm::can::Message> getMessage(Callback&& cb);

@@ -31,5 +31,42 @@ struct PdoMapping
     }
 };
 
+template<typename OD>
+class PdoObject{
+protected:
+    static constexpr std::size_t MaxMappingCount{8};
+
+    bool active_{false};
+    uint32_t canId_{};
+    uint_fast8_t mappingCount_{};
+    std::array<PdoMapping, MaxMappingCount> mappings_{};
+    std::array<DataType, MaxMappingCount> mappingTypes_{};
+
+public:
+
+    void setCanId(uint32_t canId);
+
+    SdoErrorCode setActive();
+    void setInactive();
+    bool isActive() const;
+
+
+    SdoErrorCode setMappingCount(uint_fast8_t count);
+    uint_fast8_t mappingCount() const;
+
+    SdoErrorCode setMapping(uint_fast8_t index, PdoMapping mapping);
+    PdoMapping mapping(uint_fast8_t index) const;
+
+    uint32_t cobId() const { return active_ ? canId_ : (canId_ | 0x8000'0000); }
+    uint32_t canId() const { return canId_; }
+
+protected:
+    SdoErrorCode validateMapping(PdoMapping mapping);
+    SdoErrorCode validateMappings();
+};
+
 }
+
+#include "pdo_common_impl.hpp"
+
 #endif // CANOPEN_PDO_COMMON_HPP
