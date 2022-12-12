@@ -4,11 +4,16 @@
 
 namespace modm_canopen {
 
+template <typename OD> 
+void ReceivePdo<OD>::setSourceId(uint8_t nodeId, uint8_t tpdoId) {
+  PdoObject<OD>::canId_ = ((0x100 * (tpdoId + 1) + 0x80)| nodeId);
+}
+
+
 template <typename OD>
 template <typename Callback>
 void ReceivePdo<OD>::processMessage(const modm::can::Message &message,
                                     Callback &&cb) {
-
   if (message.identifier != PdoObject<OD>::canId_) {
     return;
   }

@@ -64,19 +64,11 @@ private:
     static inline constinit std::array<TransmitPdo_t, MaxTPDOCount> transmitPdos_;
 
 public:
-
-    static inline void setReceivePdoActive(uint8_t index, bool active){
-        receivePdos_[index].setActive(active);
-    }
-    static inline void setTransmitPdoActive(uint8_t index, bool active){
-        transmitPdos_[index].setActive(active);
-    }
-    static inline void setReceivePdo(uint8_t index, ReceivePdo_t rpdo){
-        receivePdos_[index] = rpdo;
-    }
-    static inline void setTransmitPdo(uint8_t index, TransmitPdo_t tpdo){
-        transmitPdos_[index] = tpdo;
-    }
+    static uint32_t tpdoCanId(uint8_t index);
+    static void setReceivePdoActive(uint8_t index, bool active);
+    static void setTransmitPdoActive(uint8_t index, bool active);
+    static void setReceivePdo(uint8_t index, ReceivePdo_t rpdo);
+    static void setTransmitPdo(uint8_t index, TransmitPdo_t tpdo);
 };
 
 }

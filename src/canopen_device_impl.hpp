@@ -100,12 +100,12 @@ template<typename OD, typename... Protocols>
 template<typename MessageCallback>
 void CanopenDevice<OD, Protocols...>::processMessage(const modm::can::Message& message, MessageCallback&& cb)
 {
+    for (auto& rpdo : receivePdos_) {
+        rpdo.processMessage(message, [](Address address, Value value) {
+            write(address, value);
+        });
+    }
     if ((message.identifier & 0x7f) == nodeId_) {
-        for (auto& rpdo : receivePdos_) {
-            rpdo.processMessage(message, [](Address address, Value value) {
-                write(address, value);
-            });
-        }
         sdoServer_.processMessage(message, std::forward<MessageCallback>(cb));
     }
 }
@@ -147,6 +147,7 @@ void CanopenDevice<OD, Protocols...>::setNodeId(uint8_t id)
     nodeId_ = id & 0x7f;
     static_assert(transmitPdos_.size() == 4);
     static_assert(receivePdos_.size() == 4);
+    //TODO remove?
     for (int i = 0; i < 4; ++i) {
         transmitPdos_[i].setCanId((0x100 * (i + 1) + 0x80) | nodeId_);
     }
@@ -180,5 +181,32 @@ constexpr auto CanopenDevice<OD, Protocols...>::constructHandlerMap() -> Handler
     detail::missing_read_handler<findMissingReadHandler(handlers)>();
     detail::missing_write_handler<findMissingWriteHandler(handlers)>();
     return handlers;
+}
+
+template<typename OD, typename... Protocols>
+void CanopenDevice<OD, Protocols...>::setReceivePdoActive(uint8_t index, bool active){
+    receivePdos_[index].setActive(active);
+}
+
+template<typename OD, typename... Protocols>
+void CanopenDevice<OD, Protocols...>::setTransmitPdoActive(uint8_t index, bool active){
+    transmitPdos_[index].setActive(active);
+}
+
+template<typename OD, typename... Protocols>
+void CanopenDevice<OD, Protocols...>::setReceivePdo(uint8_t index, ReceivePdo_t rpdo){
+    receivePdos_[index] = rpdo;
+}
+
+template<typename OD, typename... Protocols>
+void CanopenDevice<OD, Protocols...>::setTransmitPdo(uint8_t index, TransmitPdo_t tpdo){
+    transmitPdos_[index] = tpdo;
+    transmitPdos_[index].setCanId(tpdoCanId(index));
+}
+
+
+template<typename OD, typename... Protocols>
+uint32_t CanopenDevice<OD, Protocols...>::tpdoCanId(uint8_t index){
+   return (0x100 * (index + 1) + 0x80) | nodeId_;
 }
 }

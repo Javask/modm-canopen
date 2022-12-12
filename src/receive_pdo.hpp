@@ -14,6 +14,7 @@ enum class ReceiveMode {
 
 template <typename OD> class ReceivePdo : public PdoObject<OD> {
 public:
+  void setSourceId(uint8_t nodeId, uint8_t tpdoId);
   template <typename Callback>
   void processMessage(const modm::can::Message &message, Callback &&cb);
 
