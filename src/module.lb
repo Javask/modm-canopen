@@ -28,5 +28,5 @@ def generate_object_dictionary(env):
 def build(env):
     generate_object_dictionary(env)
     env.outbasepath = "modm-canopen/src/modm-canopen"
-    env.copy(".")
+    env.copy(".", ignore=env.ignore_files("cia402"))
     env.collect("modm:build:path.include", "modm-canopen/src")

@@ -1,0 +1,17 @@
+import subprocess
+from pathlib import Path
+
+def init(module):
+    module.name = "device:cia402"
+    module.description = "Classes to implement the Cia402 Specification"
+
+
+def prepare(module, options):
+    module.depends("modm-canopen:device")
+    return True
+
+
+def build(env):
+    env.outbasepath = "modm-canopen/src/modm-canopen/cia402"
+    env.copy(".")
+    env.collect("modm:build:path.include", "modm-canopen/src/cia402")
