@@ -6,7 +6,7 @@ namespace modm_canopen
 namespace cia402
 {
 
-std::string
+const char*
 stateToString(State state)
 {
 	switch (state)

@@ -1,6 +1,5 @@
 #pragma once
 #include <cstdint>
-#include <string>
 namespace modm_canopen
 {
 namespace cia402
@@ -21,7 +20,7 @@ enum class State
 	Fault
 };
 
-std::string
+const char*
 stateToString(State state);
 }  // namespace cia402
 }  // namespace modm_canopen

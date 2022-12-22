@@ -38,7 +38,7 @@ StateMachine::update(const CommandWord& cmd)
 		{
 			status_ = s.apply(status_);
 			state_ = s.state;
-			MODM_LOG_DEBUG << "Updated State to " << stateToString(state_).c_str() << modm::endl;
+			MODM_LOG_DEBUG << "Updated State to " << stateToString(state_) << modm::endl;
 			return true;
 		}
 	}
@@ -57,7 +57,7 @@ StateMachine::set(uint16_t value)
 				return false;
 			status_ = value;
 			state_ = s.state;
-			MODM_LOG_DEBUG << "Updated State to " << stateToString(state_).c_str() << modm::endl;
+			MODM_LOG_DEBUG << "Updated State to " << stateToString(state_) << modm::endl;
 			return true;
 		}
 	}
