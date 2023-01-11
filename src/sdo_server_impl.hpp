@@ -16,9 +16,7 @@ SdoServer<Device>::processMessage(const modm::can::Message& request, C&& cb)
 	constexpr uint8_t commandDownloadMask = 0b111'0'00'1'0;
 	constexpr uint8_t sizeIndicated = 0b000'0'00'0'1;
 
-	const uint16_t canId = 0x600 + nodeId_;
-
-	if (request.identifier == canId && request.getLength() == 8)
+	if (request.identifier == rxCOBId() && request.getLength() == 8)
 	{
 		const Address address{.index = uint16_t((request.data[2] << 8) | request.data[1]),
 							  .subindex = request.data[3]};
@@ -28,7 +26,7 @@ SdoServer<Device>::processMessage(const modm::can::Message& request, C&& cb)
 			auto result = Device::read(address);
 			if (const SdoErrorCode* error = std::get_if<SdoErrorCode>(&result); error)
 			{
-				std::forward<C>(cb)(detail::transferAbort(nodeId_, address, *error));
+				std::forward<C>(cb)(detail::transferAbort(txCOBId(), address, *error));
 			} else
 			{
 				// std::get_if can't return nullptr
@@ -36,11 +34,11 @@ SdoServer<Device>::processMessage(const modm::can::Message& request, C&& cb)
 				const Value& value = *std::get_if<Value>(&result);
 				if (valueSupportsExpediteTransfer(value))
 				{
-					std::forward<C>(cb)(detail::uploadResponse(nodeId_, address, value));
+					std::forward<C>(cb)(detail::uploadResponse(txCOBId(), address, value));
 				} else
 				{
 					std::forward<C>(cb)(
-						detail::transferAbort(nodeId_, address, SdoErrorCode::UnsupportedAccess));
+						detail::transferAbort(txCOBId(), address, SdoErrorCode::UnsupportedAccess));
 				}
 			}
 		} else if ((request.data[0] & commandDownloadMask) == commandExpediteDownload)
@@ -51,22 +49,22 @@ SdoServer<Device>::processMessage(const modm::can::Message& request, C&& cb)
 				Device::write(address, std::span<const uint8_t>{&request.data[4], 4}, size);
 			if (error == SdoErrorCode::NoError)
 			{
-				std::forward<C>(cb)(detail::downloadResponse(nodeId_, address));
+				std::forward<C>(cb)(detail::downloadResponse(txCOBId(), address));
 			} else
 			{
-				std::forward<C>(cb)(detail::transferAbort(nodeId_, address, error));
+				std::forward<C>(cb)(detail::transferAbort(txCOBId(), address, error));
 			}
 		} else
 		{
 			std::forward<C>(cb)(
-				detail::transferAbort(nodeId_, address, SdoErrorCode::UnsupportedAccess));
+				detail::transferAbort(txCOBId(), address, SdoErrorCode::UnsupportedAccess));
 		}
 	}
 }
 
 template<typename Device>
 uint8_t
-SdoServer<Device>::nodeId() const
+SdoServer<Device>::nodeId()
 {
 	return nodeId_;
 }
@@ -78,10 +76,24 @@ SdoServer<Device>::setNodeId(uint8_t id)
 	nodeId_ = id;
 }
 
-auto
-detail::uploadResponse(uint8_t nodeId, Address address, const Value& value) -> modm::can::Message
+template<typename Device>
+uint32_t
+SdoServer<Device>::rxCOBId()
 {
-	modm::can::Message message{uint32_t(0x580 + nodeId), 8};
+	return (uint32_t)nodeId_ + 0x600;
+}
+
+template<typename Device>
+uint32_t
+SdoServer<Device>::txCOBId()
+{
+	return (uint32_t)nodeId_ + 0x580;
+}
+
+auto
+detail::uploadResponse(uint32_t txCOBId, Address address, const Value& value) -> modm::can::Message
+{
+	modm::can::Message message{txCOBId, 8};
 	message.setExtended(false);
 	const auto sizeFlags = (0b11 & (4 - getValueSize(value))) << 2;
 	message.data[0] = 0b010'0'00'1'1 | sizeFlags;
@@ -93,9 +105,9 @@ detail::uploadResponse(uint8_t nodeId, Address address, const Value& value) -> m
 }
 
 auto
-detail::downloadResponse(uint8_t nodeId, Address address) -> modm::can::Message
+detail::downloadResponse(uint32_t txCOBId, Address address) -> modm::can::Message
 {
-	modm::can::Message message{uint32_t(0x580 + nodeId), 8};
+	modm::can::Message message{txCOBId, 8};
 	message.setExtended(false);
 	message.data[0] = 0b011'00000;
 	message.data[1] = address.index & 0xFF;
@@ -105,9 +117,9 @@ detail::downloadResponse(uint8_t nodeId, Address address) -> modm::can::Message
 }
 
 auto
-detail::transferAbort(uint8_t nodeId, Address address, SdoErrorCode error) -> modm::can::Message
+detail::transferAbort(uint32_t txCOBId, Address address, SdoErrorCode error) -> modm::can::Message
 {
-	modm::can::Message message{uint32_t(0x580 + nodeId), 8};
+	modm::can::Message message{txCOBId, 8};
 	message.setExtended(false);
 	message.data[0] = 0b100'00000;
 	message.data[1] = address.index & 0xFF;
