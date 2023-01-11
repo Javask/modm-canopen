@@ -77,6 +77,8 @@ public:
 	write(Address address, std::span<const uint8_t> data, int8_t size = -1) -> SdoErrorCode;
 
 	static uint32_t
+	rpdoCanId(uint8_t index);
+	static uint32_t
 	tpdoCanId(uint8_t index);
 	static void
 	setReceivePdoActive(uint8_t index, bool active);
