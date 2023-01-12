@@ -24,7 +24,6 @@ StateMachine::update(const CommandWord& cmd)
 			if (s.availableIn[0] == state_ || s.availableIn[1] == state_ ||
 				s.availableIn[2] == state_)
 			{
-				MODM_LOG_DEBUG << "Received valid state command..." << modm::endl;
 				destination_ = s.destination;
 				break;
 			}
@@ -53,8 +52,7 @@ StateMachine::set(uint16_t value)
 	{
 		if (s.matches(value))
 		{
-			if(state_ == s.state) 
-				return false;
+			if (state_ == s.state) return false;
 			status_ = value;
 			state_ = s.state;
 			MODM_LOG_DEBUG << "Updated State to " << stateToString(state_) << modm::endl;
