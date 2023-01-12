@@ -19,8 +19,14 @@ struct ScalingFactor
 	{
 		static_assert(std::is_integral<Integer>::value);
 		int32_t result = (int32_t)user * numerator / divisor;
-		static_assert(result <= std::numeric_limits<Integer>::max());
-		static_assert(result >= std::numeric_limits<Integer>::min());
+		if (result > std::numeric_limits<Integer>::max())
+		{
+			return std::numeric_limits<Integer>::max();
+		}
+		if (result < std::numeric_limits<Integer>::min())
+		{
+			return std::numeric_limits<Integer>::min();
+		}
 		return (Integer)(result);
 	}
 
@@ -30,8 +36,14 @@ struct ScalingFactor
 	{
 		static_assert(std::is_integral<Integer>::value);
 		int32_t result = (int32_t)internal * divisor / numerator;
-		static_assert(result <= std::numeric_limits<Integer>::max());
-		static_assert(result >= std::numeric_limits<Integer>::min());
+		if (result > std::numeric_limits<Integer>::max())
+		{
+			return std::numeric_limits<Integer>::max();
+		}
+		if (result < std::numeric_limits<Integer>::min())
+		{
+			return std::numeric_limits<Integer>::min();
+		}
 		return (Integer)(result);
 	}
 };
