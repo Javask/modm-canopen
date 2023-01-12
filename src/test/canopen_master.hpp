@@ -22,6 +22,7 @@ public:
 	using ObjectDictionary = OD;
 	using ReceivePdo_t = ReceivePdo<OD>;
 	using TransmitPdo_t = TransmitPdo<OD>;
+	using SdoClient_t = SdoClient<CanopenMaster>;
 
 	static void
 	setValueChanged(Address address);
@@ -36,7 +37,7 @@ public:
 	update(MessageCallback&& cb);
 
 private:
-	friend SdoClient<CanopenMaster>;
+	friend SdoClient_t;
 
 	using Map = HandlerMap<OD>;
 
@@ -47,7 +48,6 @@ private:
 
 	static constexpr HandlerMap<OD> accessHandlers = constructHandlerMap();
 
-	static inline constinit SdoClient<CanopenMaster> sdoClient_;
 	static inline uint8_t nodeId_{};
 
 	static inline std::vector<ReceivePdo_t> receivePdos_{};
@@ -63,19 +63,39 @@ public:
 	write(Address address, std::span<const uint8_t> data, int8_t size = -1) -> SdoErrorCode;
 
 	static uint32_t
-	rpdoCOBId(uint8_t nodeId, uint8_t index);
+	rpdoCanId(uint8_t nodeId, uint8_t index);
 	static uint32_t
-	tpdoCOBId(uint8_t nodeId, uint8_t index);
+	tpdoCanId(uint8_t nodeId, uint8_t index);
 
 	static void
-	setRPDO(uint8_t sourceId, uint8_t pdoId, ReceivePdo_t pdo);
+	setRPDO(uint8_t sourceId, uint8_t pdoId, ReceivePdo_t& pdo);
 	static void
-	setTPDO(uint8_t destinationId, uint8_t pdoId, TransmitPdo_t pdo);
+	setTPDO(uint8_t destinationId, uint8_t pdoId, TransmitPdo_t& pdo);
 
 	static SdoErrorCode
 	setRPDOActive(uint8_t sourceId, uint8_t pdoId, bool active);
 	static SdoErrorCode
 	setTPDOActive(uint8_t destinationId, uint8_t pdoId, bool active);
+
+	template<typename MessageCallback>
+	static void
+	setRemoteRPDOActive(uint8_t remoteId, uint8_t pdoId, bool active,
+						MessageCallback&& sendMessage);
+
+	template<typename MessageCallback>
+	static void
+	setRemoteTPDOActive(uint8_t remoteId, uint8_t pdoId, bool active,
+						MessageCallback&& sendMessage);
+
+	template<typename MessageCallback>
+	static void
+	configureRemoteRPDO(uint8_t remoteId, uint8_t pdoId, TransmitPdo_t pdo,
+						MessageCallback&& sendMessage);
+
+	template<typename MessageCallback>
+	static void
+	configureRemoteTPDO(uint8_t remoteId, uint8_t pdoId, ReceivePdo_t pdo,
+						MessageCallback&& sendMessage);
 };
 
 }  // namespace modm_canopen

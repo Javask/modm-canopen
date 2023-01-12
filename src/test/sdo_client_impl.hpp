@@ -1,7 +1,7 @@
 #ifndef CANOPEN_SDO_CLIENT_HPP
 #error "Do not include this file directly, include sdo_client.hpp instead!"
 #endif
-
+#include <modm/debug/logger.hpp>
 namespace modm_canopen
 {
 
@@ -14,6 +14,7 @@ void
 SdoClient<Device>::processMessage(const modm::can::Message& request,
 								  MessageCallback&& responseCallback)
 {
+
 	if (request.getLength() != 8) return;
 	if (request.isExtended()) return;
 
@@ -38,6 +39,7 @@ SdoClient<Device>::processMessage(const modm::can::Message& request,
 	{
 		if (it->canId + (uint32_t)0x580 == request.getIdentifier() && address == it->address)
 		{
+
 			if (isUpload)
 			{
 				waitingOn.erase(it);
@@ -100,6 +102,13 @@ SdoClient<Device>::requestWrite(uint8_t canId, Address address, const Value& val
 	WaitingEntry entry{.canId = canId, .address = address, .isRead = false};
 	waitingOn.push_back(entry);
 	sendMessage(msg);
+}
+
+template<typename Device>
+bool
+SdoClient<Device>::waiting()
+{
+	return !waitingOn.empty();
 }
 
 auto

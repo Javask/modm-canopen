@@ -105,10 +105,7 @@ CanopenMaster<OD, Protocols...>::processMessage(const modm::can::Message& messag
 	{
 		rpdo.processMessage(message, [](Address address, Value value) { write(address, value); });
 	}
-	if ((message.identifier & 0x7f) == nodeId_)
-	{
-		sdoClient_.processMessage(message, std::forward<MessageCallback>(cb));
-	}
+	SdoClient_t::processMessage(message, std::forward<MessageCallback>(cb));
 }
 
 template<typename OD, typename... Protocols>
@@ -168,22 +165,22 @@ CanopenMaster<OD, Protocols...>::constructHandlerMap() -> HandlerMap<OD>
 
 template<typename OD, typename... Protocols>
 uint32_t
-CanopenMaster<OD, Protocols...>::tpdoCOBId(uint8_t nodeId, uint8_t index)
+CanopenMaster<OD, Protocols...>::tpdoCanId(uint8_t nodeId, uint8_t index)
 {
 	return (0x100 * (index + 1) + 0x100) | nodeId;  // Reverse than in device
 }
 template<typename OD, typename... Protocols>
 uint32_t
-CanopenMaster<OD, Protocols...>::rpdoCOBId(uint8_t nodeId, uint8_t index)
+CanopenMaster<OD, Protocols...>::rpdoCanId(uint8_t nodeId, uint8_t index)
 {
 	return (0x100 * (index + 1) + 0x80) | nodeId;  // Reverse than in device
 }
 
 template<typename OD, typename... Protocols>
 void
-CanopenMaster<OD, Protocols...>::setRPDO(uint8_t sourceId, uint8_t pdoId, ReceivePdo_t pdo)
+CanopenMaster<OD, Protocols...>::setRPDO(uint8_t sourceId, uint8_t pdoId, ReceivePdo_t& pdo)
 {
-	auto canId = rpdoCOBId(sourceId, pdoId);
+	auto canId = rpdoCanId(sourceId, pdoId);
 	pdo.setCanId(canId);
 	for (auto& rpdo : receivePdos_)
 	{
@@ -197,9 +194,9 @@ CanopenMaster<OD, Protocols...>::setRPDO(uint8_t sourceId, uint8_t pdoId, Receiv
 }
 template<typename OD, typename... Protocols>
 void
-CanopenMaster<OD, Protocols...>::setTPDO(uint8_t destinationId, uint8_t pdoId, TransmitPdo_t pdo)
+CanopenMaster<OD, Protocols...>::setTPDO(uint8_t destinationId, uint8_t pdoId, TransmitPdo_t& pdo)
 {
-	auto canId = tpdoCOBId(destinationId, pdoId);
+	auto canId = tpdoCanId(destinationId, pdoId);
 	pdo.setCanId(canId);
 	for (auto& tpdo : transmitPdos_)
 	{
@@ -216,7 +213,7 @@ template<typename OD, typename... Protocols>
 SdoErrorCode
 CanopenMaster<OD, Protocols...>::setRPDOActive(uint8_t sourceId, uint8_t pdoId, bool active)
 {
-	auto canId = rpdoCOBId(sourceId, pdoId);
+	auto canId = rpdoCanId(sourceId, pdoId);
 	for (auto& rpdo : receivePdos_)
 	{
 		if (rpdo.canId() == canId)
@@ -233,7 +230,7 @@ template<typename OD, typename... Protocols>
 SdoErrorCode
 CanopenMaster<OD, Protocols...>::setTPDOActive(uint8_t destinationId, uint8_t pdoId, bool active)
 {
-	auto canId = tpdoCOBId(destinationId, pdoId);
+	auto canId = tpdoCanId(destinationId, pdoId);
 	for (auto& tpdo : transmitPdos_)
 	{
 		if (tpdo.canId() == canId)
@@ -245,6 +242,95 @@ CanopenMaster<OD, Protocols...>::setTPDOActive(uint8_t destinationId, uint8_t pd
 		}
 	}
 	return SdoErrorCode::PdoMappingError;
+}
+
+template<typename OD, typename... Protocols>
+template<typename MessageCallback>
+void
+CanopenMaster<OD, Protocols...>::setRemoteRPDOActive(uint8_t remoteId, uint8_t pdoId, bool active,
+													 MessageCallback&& sendMessage)
+{
+
+	const uint16_t rpdoCommParamAddr = 0x1400 + pdoId;
+	const auto rpdoCobIdAddr = Address{rpdoCommParamAddr, 1};
+	const uint32_t rpdoCobId =
+		tpdoCanId(remoteId, pdoId) |
+		(active ? 0 : 0x8000'0000);  // Needs to be tpdoCanId, since they are reversed on master...
+									 // TODO find a way to make that consistent
+	SdoClient_t::requestWrite(remoteId, rpdoCobIdAddr, (uint32_t)rpdoCobId,
+							  std::forward<MessageCallback>(sendMessage));
+}
+template<typename OD, typename... Protocols>
+template<typename MessageCallback>
+void
+CanopenMaster<OD, Protocols...>::setRemoteTPDOActive(uint8_t remoteId, uint8_t pdoId, bool active,
+													 MessageCallback&& sendMessage)
+{
+	uint16_t tpdoCommParamAddr = 0x1800 + pdoId;
+	const auto tpdoCobIdAddr = Address{tpdoCommParamAddr, 1};
+	const uint32_t tpdoCobId =
+		rpdoCanId(remoteId, pdoId) |
+		(active ? 0 : 0x8000'0000);  // Needs to be rpdoCanId, since they are reversed on master...
+									 // TODO find a way to make that consistent
+	SdoClient_t::requestWrite(remoteId, tpdoCobIdAddr, (uint32_t)tpdoCobId,
+							  std::forward<MessageCallback>(sendMessage));
+}
+
+template<typename OD, typename... Protocols>
+template<typename MessageCallback>
+void
+CanopenMaster<OD, Protocols...>::configureRemoteRPDO(uint8_t remoteId, uint8_t pdoId,
+													 TransmitPdo_t pdo,
+													 MessageCallback&& sendMessage)
+{
+	pdo.setInactive();
+	setRemoteRPDOActive(remoteId, pdoId, false, std::forward<MessageCallback>(sendMessage));
+	const uint16_t rpdoCommParamAddr = 0x1400 + pdoId;
+	const auto rpdoCobId = Address{rpdoCommParamAddr, 1};
+	SdoClient_t::requestWrite(remoteId, rpdoCobId, (uint32_t)pdo.cobId(),
+							  std::forward<MessageCallback>(sendMessage));
+
+	const uint16_t rpdoMapParamAddr = 0x1600 + pdoId;
+
+	for (uint8_t i = 0; i < pdo.mappingCount(); i++)
+	{
+		const auto rpdoMappingAddr = Address{rpdoMapParamAddr, (uint8_t)(i + 1)};
+		SdoClient_t::requestWrite(remoteId, rpdoMappingAddr, (uint32_t)pdo.mapping(i).encode(),
+								  std::forward<MessageCallback>(sendMessage));
+	}
+
+	const auto rpdoMappingCount = Address{rpdoMapParamAddr, 0};
+	SdoClient_t::requestWrite(remoteId, rpdoMappingCount, (uint8_t)pdo.mappingCount(),
+							  std::forward<MessageCallback>(sendMessage));
+	setRemoteRPDOActive(remoteId, pdoId, true, std::forward<MessageCallback>(sendMessage));
+}
+template<typename OD, typename... Protocols>
+template<typename MessageCallback>
+void
+CanopenMaster<OD, Protocols...>::configureRemoteTPDO(uint8_t remoteId, uint8_t pdoId,
+													 ReceivePdo_t pdo,
+													 MessageCallback&& sendMessage)
+{
+	pdo.setInactive();
+	setRemoteTPDOActive(remoteId, pdoId, false, std::forward<MessageCallback>(sendMessage));
+	uint16_t tpdoCommParamAddr = 0x1800 + pdoId;
+	const auto tpdoCobId = Address{tpdoCommParamAddr, 1};
+	SdoClient_t::requestWrite(remoteId, tpdoCobId, (uint32_t)pdo.cobId(),
+							  std::forward<MessageCallback>(sendMessage));
+
+	uint16_t tpdoMapParamAddr = 0x1A00 + pdoId;
+
+	for (uint8_t i = 0; i < pdo.mappingCount(); i++)
+	{
+		const auto tpdoMappingAddr = Address{tpdoMapParamAddr, (uint8_t)(i + 1)};
+		SdoClient_t::requestWrite(remoteId, tpdoMappingAddr, (uint32_t)pdo.mapping(i).encode(),
+								  std::forward<MessageCallback>(sendMessage));
+	}
+	const auto tpdoMappingCount = Address{tpdoMapParamAddr, 0};
+	SdoClient_t::requestWrite(remoteId, tpdoMappingCount, (uint8_t)pdo.mappingCount(),
+							  std::forward<MessageCallback>(sendMessage));
+
+	setRemoteTPDOActive(remoteId, pdoId, true, std::forward<MessageCallback>(sendMessage));
 }
 
 }  // namespace modm_canopen

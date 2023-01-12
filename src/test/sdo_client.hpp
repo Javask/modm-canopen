@@ -31,6 +31,9 @@ public:
 	static void
 	processMessage(const modm::can::Message& request, MessageCallback&& responseCallback);
 
+	static bool
+	waiting();
+
 private:
 	struct WaitingEntry
 	{
