@@ -61,7 +61,6 @@ private:
 
 	static constexpr HandlerMap<OD> accessHandlers = constructHandlerMap();
 
-	static inline constinit SdoServer<CanopenDevice> sdoServer_;
 	static inline uint8_t nodeId_{};
 
 	static inline constinit std::array<ReceivePdo_t, MaxRPDOCount> receivePdos_;

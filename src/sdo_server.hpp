@@ -27,6 +27,14 @@ public:
 	static void
 	processMessage(const modm::can::Message& request, MessageCallback&& responseCallback);
 
+	constexpr void
+	registerHandlers(Device::Map& map)
+	{
+		map.template setReadHandler<Address{0x1200, 0}>(+[]() -> uint8_t { return 2; });
+		map.template setReadHandler<Address{0x1200, 1}>(+[]() -> uint32_t { return rxCOBId(); });
+		map.template setReadHandler<Address{0x1200, 2}>(+[]() -> uint32_t { return txCOBId(); });
+	}
+
 private:
 	static inline uint8_t nodeId_{};
 };

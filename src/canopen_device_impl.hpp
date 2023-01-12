@@ -107,7 +107,7 @@ CanopenDevice<OD, Protocols...>::processMessage(const modm::can::Message& messag
 	}
 	if ((message.identifier & 0x7f) == nodeId_)
 	{
-		sdoServer_.processMessage(message, std::forward<MessageCallback>(cb));
+		SdoServer<CanopenDevice>::processMessage(message, std::forward<MessageCallback>(cb));
 	}
 }
 
@@ -156,7 +156,7 @@ CanopenDevice<OD, Protocols...>::setNodeId(uint8_t id)
 	// TODO remove?
 	for (int i = 0; i < 4; ++i) { transmitPdos_[i].setCanId((0x100 * (i + 1) + 0x80) | nodeId_); }
 	for (int i = 0; i < 4; ++i) { receivePdos_[i].setCanId(0x100 * (i + 2) | nodeId_); }
-	sdoServer_.setNodeId(id);
+	SdoServer<CanopenDevice>::setNodeId(id);
 }
 
 template<typename OD, typename... Protocols>
@@ -173,6 +173,7 @@ CanopenDevice<OD, Protocols...>::registerHandlers() -> HandlerMap<OD>
 	HandlerMap<OD> handlers;
 	ReceivePdoConfigurator<CanopenDevice>{}.registerHandlers(handlers);
 	TransmitPdoConfigurator<CanopenDevice>{}.registerHandlers(handlers);
+	SdoServer<CanopenDevice>{}.registerHandlers(handlers);
 	(Protocols{}.registerHandlers(handlers), ...);
 
 	return handlers;
