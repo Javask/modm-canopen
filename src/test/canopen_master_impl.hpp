@@ -121,6 +121,7 @@ CanopenMaster<OD, Protocols...>::update(MessageCallback&& cb)
 			if (message) { std::forward<MessageCallback>(cb)(*message); }
 		}
 	}
+	SdoClient_t::update(cb);
 }
 
 template<typename OD, typename... Protocols>

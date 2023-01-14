@@ -5,6 +5,7 @@
 #include <future>
 #include <vector>
 #include <cstdint>
+#include <modm/processing/timer.hpp>
 
 namespace modm_canopen
 {
@@ -31,6 +32,10 @@ public:
 	static void
 	processMessage(const modm::can::Message& request, MessageCallback&& responseCallback);
 
+	template<typename MessageCallback>
+	static void
+	update(MessageCallback&& sendMessage);
+
 	static bool
 	waiting();
 
@@ -40,9 +45,14 @@ private:
 		uint8_t canId;
 		Address address;
 		bool isRead;
+		modm::Clock::time_point sent;
+		modm::can::Message msg;
 	};
 
 	static std::vector<WaitingEntry> waitingOn;
+
+	static void
+	addWaitingEntry(uint8_t canId, Address address, bool isRead, modm::can::Message msg);
 };
 
 namespace detail

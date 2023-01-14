@@ -4,9 +4,27 @@
 #include <modm/debug/logger.hpp>
 namespace modm_canopen
 {
-
+using namespace std::literals;
 template<typename Device>
 std::vector<typename SdoClient<Device>::WaitingEntry> SdoClient<Device>::waitingOn{};
+
+template<typename Device>
+template<typename MessageCallback>
+void
+SdoClient<Device>::update(MessageCallback&& sendMessage)
+{
+	constexpr modm::Clock::duration timeout{100ms};
+	auto now = modm::Clock::now();
+	for (auto& wait : waitingOn)
+	{
+		auto timesince = now - wait.sent;
+		if (timesince > timeout)
+		{
+			sendMessage(wait.msg);
+			wait.sent = now;
+		}
+	}
+}
 
 template<typename Device>
 template<typename MessageCallback>
@@ -72,8 +90,7 @@ void
 SdoClient<Device>::requestRead(uint8_t canId, Address address, MessageCallback&& sendMessage)
 {
 	auto msg = detail::uploadMessage(canId, address);
-	WaitingEntry entry{.canId = canId, .address = address, .isRead = true};
-	waitingOn.push_back(entry);
+	addWaitingEntry(canId, address, true, msg);
 	sendMessage(msg);
 }
 
@@ -86,8 +103,7 @@ SdoClient<Device>::requestWrite(uint8_t canId, Address address, MessageCallback&
 	if (std::get_if<Value>(value))
 	{
 		auto msg = detail::downloadMessage(canId, address, std::get<Value>(value));
-		WaitingEntry entry{.canId = canId, .address = address, .isRead = false};
-		waitingOn.push_back(entry);
+		addWaitingEntry(canId, address, false, msg);
 		sendMessage(msg);
 	}
 }
@@ -99,9 +115,21 @@ SdoClient<Device>::requestWrite(uint8_t canId, Address address, const Value& val
 								MessageCallback&& sendMessage)
 {
 	auto msg = detail::downloadMessage(canId, address, value);
-	WaitingEntry entry{.canId = canId, .address = address, .isRead = false};
-	waitingOn.push_back(entry);
+	addWaitingEntry(canId, address, false, msg);
 	sendMessage(msg);
+}
+
+template<typename Device>
+void
+SdoClient<Device>::addWaitingEntry(uint8_t canId, Address address, bool isRead,
+								   modm::can::Message msg)
+{
+	WaitingEntry entry{.canId = canId,
+					   .address = address,
+					   .isRead = isRead,
+					   .sent = modm::Clock::now(),
+					   .msg = msg};
+	waitingOn.push_back(entry);
 }
 
 template<typename Device>
