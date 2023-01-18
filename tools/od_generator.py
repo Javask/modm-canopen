@@ -14,6 +14,7 @@ class DataType(IntEnum):
     UNSIGNED8 = 0x0005
     UNSIGNED16 = 0x0006
     UNSIGNED32 = 0x0007
+    REAL32 = 0x0008
 
 class ObjectType(IntEnum):
     NULL = 0x00
@@ -142,7 +143,8 @@ data_type_map = {
     DataType.INTEGER32 : "Int32",
     DataType.UNSIGNED8 : "UInt8",
     DataType.UNSIGNED16 : "UInt16",
-    DataType.UNSIGNED32 : "UInt32"
+    DataType.UNSIGNED32 : "UInt32",
+    DataType.REAL32 : "Real32"
 }
 
 def convert_data_type(eds_type):
