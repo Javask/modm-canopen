@@ -52,8 +52,8 @@ StateMachine::set(uint16_t value)
 	{
 		if (s.matches(value))
 		{
-			if (state_ == s.state) return false;
 			status_ = value;
+			if (state_ == s.state) return true;
 			state_ = s.state;
 			MODM_LOG_DEBUG << "Updated State to " << stateToString(state_) << modm::endl;
 			return true;
