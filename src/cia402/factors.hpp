@@ -16,7 +16,7 @@ struct ScalingFactor
 
 	template<typename Integer>
 	inline Integer
-	toInternal(Integer user)
+	toInternal(Integer user) const
 	{
 		static_assert(std::is_integral<Integer>::value);
 		typedef typename std::conditional<std::is_signed<Integer>::value, int32_t, uint32_t>::type
@@ -41,7 +41,7 @@ struct ScalingFactor
 
 	template<typename Integer>
 	inline Integer
-	toUser(Integer internal)
+	toUser(Integer internal) const
 	{
 		static_assert(std::is_integral<Integer>::value);
 		typedef typename std::conditional<std::is_signed<Integer>::value, int32_t, uint32_t>::type
