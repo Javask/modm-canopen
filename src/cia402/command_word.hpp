@@ -1,5 +1,6 @@
 #pragma once
 #include "command.hpp"
+#include "command_bits.hpp"
 
 namespace modm_canopen
 {
@@ -38,6 +39,22 @@ public:
 	{
 		update(cmd.apply(value_));
 	}
+
+	template<CommandBits bit>
+	inline bool
+	isSet()
+	{
+		return (value_ & ((uint16_t)bit)) == ((uint16_t)bit);
+	}
+
+	template<CommandBits bit>
+	inline void
+	setBit(bool value)
+	{
+		value_ = (value_ & ~(uint16_t)bit) | (value ? (uint16_t)bit : 0);
+	}
+
+
 };
 }  // namespace cia402
 }  // namespace modm_canopen
