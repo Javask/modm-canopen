@@ -14,7 +14,7 @@ struct StateCommand
 	State availableIn[3];
 };
 
-constexpr std::array<StateCommand, 6> StateCommands{
+constexpr std::array<StateCommand, 7> StateCommands{
 	StateCommand{
 		.cmd =
 			Command{
@@ -63,7 +63,7 @@ constexpr std::array<StateCommand, 6> StateCommands{
 				.changing{0b0000'0000},
 			},
 		.destination = State::OperationEnabled,  // EnableOperation
-		.availableIn{State::SwitchedOn, State::Invalid, State::Invalid},
+		.availableIn{State::SwitchedOn, State::QuickStopActive, State::Invalid},
 	},
 	StateCommand{
 		.cmd =
@@ -75,9 +75,20 @@ constexpr std::array<StateCommand, 6> StateCommands{
 		.destination = State::SwitchOnDisabled,  // FaultReset
 		.availableIn{State::Fault, State::Invalid, State::Invalid},
 	},
+	StateCommand{
+		.cmd =
+			Command{
+				.bitMask{0b1000'0110},
+				.value{0b0000'0010},
+				.changing{0b0000'0000},
+			},
+		.destination = State::QuickStopActive,  // QuickStop
+		.availableIn{State::OperationEnabled, State::Invalid, State::Invalid},
+	},
 };
 
-enum class StateCommandNames:uint8_t{
+enum class StateCommandNames : uint8_t
+{
 	Shutdown = 0,
 	SwitchOn = 1,
 	DisableVoltage = 2,

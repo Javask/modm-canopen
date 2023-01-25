@@ -32,12 +32,13 @@ private:
 		}
 	};
 
-	static inline constexpr std::array<StateInfo, 5> StateInfos{
+	static inline constexpr std::array<StateInfo, 6> StateInfos{
 		StateInfo{.state{State::Fault}, .mask{0b0100'1111}, .value{0b0000'1000}},
 		StateInfo{.state{State::OperationEnabled}, .mask{0b0110'1111}, .value{0b0010'0111}},
 		StateInfo{.state{State::ReadyToSwitchOn}, .mask{0b0110'1111}, .value{0b0010'0001}},
 		StateInfo{.state{State::SwitchedOn}, .mask{0b0110'1111}, .value{0b0010'0011}},
 		StateInfo{.state{State::SwitchOnDisabled}, .mask{0b0100'1111}, .value{0b0100'0000}},
+		StateInfo{.state{State::QuickStopActive}, .mask{0b0110'1111}, .value{0b0000'0111}},
 	};
 
 	uint16_t status_;

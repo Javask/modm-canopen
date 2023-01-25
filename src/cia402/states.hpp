@@ -7,7 +7,6 @@ namespace cia402
 
 // Cut down cia402 state space
 // Ignoring states we currently do not implement:
-// QuickStopActive
 // FaultReactionActive
 // NotReadyToSwitchOn
 enum class State
@@ -17,6 +16,7 @@ enum class State
 	ReadyToSwitchOn,
 	SwitchedOn,
 	OperationEnabled,
+	QuickStopActive,
 	Fault
 };
 
