@@ -20,13 +20,16 @@ def prepare(module, options):
 def generate_object_dictionary(env):
     eds_file = env.get("modm-canopen:device:eds_file")
     generator_path = Path(__file__).parents[1] / "tools" / "od_generator.py"
-    out_path = Path("modm-canopen/src/modm-canopen/generated")
+    
+    out_path = Path(env.outpath("generated"))
     out_path.mkdir(parents=True, exist_ok=True)
     subprocess.check_call([generator_path, eds_file, out_path / "object_dictionary.hpp"])
 
 
 def build(env):
-    generate_object_dictionary(env)
     env.outbasepath = "modm-canopen/src/modm-canopen"
     env.copy(".", ignore=env.ignore_files("cia402","test"))
     env.collect("modm:build:path.include", "modm-canopen/src")
+
+def post_build(env):
+    generate_object_dictionary(env)
