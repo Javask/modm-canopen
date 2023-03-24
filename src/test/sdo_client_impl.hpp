@@ -61,8 +61,8 @@ SdoClient<Device>::processMessage(const modm::can::Message& request,
 			if (isUpload)
 			{
 				waitingOn.erase(it);
-				const SdoErrorCode error =
-					Device::write(address, std::span<const uint8_t>{&request.data[4], 4}, size);
+				const SdoErrorCode error = Device::write(
+					it->canId, address, std::span<const uint8_t>{&request.data[4], 4}, size);
 				std::forward<MessageCallback>(responseCallback)(address, error);
 				return;
 			}
@@ -99,7 +99,7 @@ template<typename MessageCallback>
 void
 SdoClient<Device>::requestWrite(uint8_t canId, Address address, MessageCallback&& sendMessage)
 {
-	auto value = Device::read(address);
+	auto value = Device::read(canId, address);
 	if (std::get_if<Value>(value))
 	{
 		auto msg = detail::downloadMessage(canId, address, std::get<Value>(value));

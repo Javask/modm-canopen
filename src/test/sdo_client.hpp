@@ -14,8 +14,6 @@ template<typename Device>
 class SdoClient
 {
 public:
-	using ObjectDictionary = Device::ObjectDictionary;
-
 	template<typename MessageCallback>
 	static void
 	requestRead(uint8_t canId, Address address, MessageCallback&& sendMessage);

@@ -1,5 +1,5 @@
-#ifndef CANOPEN_CANOPEN_DEVICE_HPP
-#error "Do not include this file directly, use canopen_device.hpp instead"
+#ifndef CANOPEN_CANOPEN_DEVICE_NODE_HPP
+#error "Do not include this file directly, use canopen_device_node.hpp instead"
 #endif
 
 namespace modm_canopen
@@ -7,9 +7,9 @@ namespace modm_canopen
 
 template<typename OD, typename... Protocols>
 auto
-CanopenDevice<OD, Protocols...>::write(Address address, Value value) -> SdoErrorCode
+CanopenNode<OD, Protocols...>::write(Address address, Value value) -> SdoErrorCode
 {
-	auto entry = OD::map.lookup(address);
+	auto entry = ObjectDictionary::map.lookup(address);
 	if (!entry) { return SdoErrorCode::ObjectDoesNotExist; }
 	if (value.index() != static_cast<uint32_t>(entry->dataType))
 	{
@@ -33,10 +33,10 @@ CanopenDevice<OD, Protocols...>::write(Address address, Value value) -> SdoError
 
 template<typename OD, typename... Protocols>
 auto
-CanopenDevice<OD, Protocols...>::write(Address address, std::span<const uint8_t> data, int8_t size)
+CanopenNode<OD, Protocols...>::write(Address address, std::span<const uint8_t> data, int8_t size)
 	-> SdoErrorCode
 {
-	auto entry = OD::map.lookup(address);
+	auto entry = ObjectDictionary::map.lookup(address);
 	if (!entry) { return SdoErrorCode::ObjectDoesNotExist; }
 	if (!entry->isWritable()) { return SdoErrorCode::WriteOfReadOnlyObject; }
 
@@ -59,7 +59,7 @@ CanopenDevice<OD, Protocols...>::write(Address address, std::span<const uint8_t>
 
 template<typename OD, typename... Protocols>
 auto
-CanopenDevice<OD, Protocols...>::read(Address address) -> std::variant<Value, SdoErrorCode>
+CanopenNode<OD, Protocols...>::read(Address address) -> std::variant<Value, SdoErrorCode>
 {
 	auto handler = accessHandlers.lookupReadHandler(address);
 	if (handler)
@@ -80,31 +80,26 @@ CanopenDevice<OD, Protocols...>::read(Address address) -> std::variant<Value, Sd
 }
 
 template<typename OD, typename... Protocols>
-template<typename MessageCallback>
 void
-CanopenDevice<OD, Protocols...>::processMessage(const modm::can::Message& message,
-												MessageCallback&& cb)
+CanopenNode<OD, Protocols...>::processMessage(const modm::can::Message& message)
 {
 	for (auto& rpdo : receivePdos_)
 	{
-		rpdo.processMessage(message, [](Address address, Value value) { write(address, value); });
-	}
-	if ((message.identifier & 0x7f) == nodeId_)
-	{
-		SdoServer<CanopenDevice>::processMessage(message, std::forward<MessageCallback>(cb));
+		rpdo.processMessage(message,
+							[this](Address address, Value value) { write(address, value); });
 	}
 }
 
 template<typename OD, typename... Protocols>
 template<typename MessageCallback>
 void
-CanopenDevice<OD, Protocols...>::update(MessageCallback&& cb)
+CanopenNode<OD, Protocols...>::update(MessageCallback&& cb)
 {
 	for (auto& tpdo : transmitPdos_)
 	{
 		if (tpdo.isActive())
 		{
-			auto message = tpdo.nextMessage([](Address address) { return read(address); });
+			auto message = tpdo.nextMessage([this](Address address) { return read(address); });
 			if (message) { std::forward<MessageCallback>(cb)(*message); }
 		}
 	}
@@ -112,7 +107,7 @@ CanopenDevice<OD, Protocols...>::update(MessageCallback&& cb)
 
 template<typename OD, typename... Protocols>
 void
-CanopenDevice<OD, Protocols...>::setValueChanged(Address address)
+CanopenNode<OD, Protocols...>::setValueChanged(Address address)
 {
 	for (auto& tpdo : transmitPdos_)
 	{
@@ -131,89 +126,49 @@ CanopenDevice<OD, Protocols...>::setValueChanged(Address address)
 }
 
 template<typename OD, typename... Protocols>
-void
-CanopenDevice<OD, Protocols...>::setNodeId(uint8_t id)
+auto
+CanopenNode<OD, Protocols...>::registerHandlers() -> CanopenNode<OD, Protocols...>::Map
 {
-	nodeId_ = id & 0x7f;
-	static_assert(transmitPdos_.size() == 4);
-	static_assert(receivePdos_.size() == 4);
-	// TODO remove?
-	for (int i = 0; i < 4; ++i) { transmitPdos_[i].setCanId((0x100 * (i + 1) + 0x80) | nodeId_); }
-	for (int i = 0; i < 4; ++i) { receivePdos_[i].setCanId(0x100 * (i + 2) | nodeId_); }
-	SdoServer<CanopenDevice>::setNodeId(id);
-}
-
-template<typename OD, typename... Protocols>
-uint8_t
-CanopenDevice<OD, Protocols...>::nodeId()
-{
-	return nodeId_;
-}
-
-template<typename OD, typename... Protocols>
-constexpr auto
-CanopenDevice<OD, Protocols...>::registerHandlers() -> HandlerMap<OD>
-{
-	HandlerMap<OD> handlers;
-	ReceivePdoConfigurator<CanopenDevice>{}.registerHandlers(handlers);
-	TransmitPdoConfigurator<CanopenDevice>{}.registerHandlers(handlers);
-	SdoServer<CanopenDevice>{}.registerHandlers(handlers);
+	Map handlers;
 	(Protocols{}.registerHandlers(handlers), ...);
 
 	return handlers;
 }
 
 template<typename OD, typename... Protocols>
-constexpr auto
-CanopenDevice<OD, Protocols...>::constructHandlerMap() -> HandlerMap<OD>
+auto
+CanopenNode<OD, Protocols...>::constructHandlerMap() -> CanopenNode<OD, Protocols...>::Map
 {
-	constexpr HandlerMap<OD> handlers = registerHandlers();
-	detail::missing_read_handler<findMissingReadHandler(handlers)>();
-	detail::missing_write_handler<findMissingWriteHandler(handlers)>();
+	Map handlers = registerHandlers();
 	return handlers;
 }
 
 template<typename OD, typename... Protocols>
 void
-CanopenDevice<OD, Protocols...>::setReceivePdoActive(uint8_t index, bool active)
+CanopenNode<OD, Protocols...>::setReceivePdoActive(uint8_t index, bool active)
 {
 	receivePdos_[index].setActive(active);
 }
 
 template<typename OD, typename... Protocols>
 void
-CanopenDevice<OD, Protocols...>::setTransmitPdoActive(uint8_t index, bool active)
+CanopenNode<OD, Protocols...>::setTransmitPdoActive(uint8_t index, bool active)
 {
 	transmitPdos_[index].setActive(active);
 }
 
 template<typename OD, typename... Protocols>
 void
-CanopenDevice<OD, Protocols...>::setReceivePdo(uint8_t index, ReceivePdo_t rpdo)
+CanopenNode<OD, Protocols...>::setReceivePdo(uint8_t index, ReceivePdo_t rpdo)
 {
 	receivePdos_[index] = rpdo;
-	receivePdos_[index].setCanId(rpdoCanId(index));
 }
 
 template<typename OD, typename... Protocols>
 void
-CanopenDevice<OD, Protocols...>::setTransmitPdo(uint8_t index, TransmitPdo_t tpdo)
+CanopenNode<OD, Protocols...>::setTransmitPdo(uint8_t index, TransmitPdo_t tpdo)
 {
 	transmitPdos_[index] = tpdo;
-	transmitPdos_[index].setCanId(tpdoCanId(index));
-}
-
-template<typename OD, typename... Protocols>
-uint32_t
-CanopenDevice<OD, Protocols...>::tpdoCanId(uint8_t index)
-{
-	return (0x100 * (index + 1) + 0x80) | nodeId_;
-}
-template<typename OD, typename... Protocols>
-uint32_t
-CanopenDevice<OD, Protocols...>::rpdoCanId(uint8_t index)
-{
-	return (0x100 * (index + 1) + 0x100) | nodeId_;
 }
 
 }  // namespace modm_canopen

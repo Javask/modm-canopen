@@ -2,27 +2,27 @@
 #define CANOPEN_CANOPEN_MASTER_HPP
 
 #include <array>
-#include <vector>
+#include <map>
+#include <variant>
+#include <tuple>
 #include <span>
 #include "object_dictionary.hpp"
-#include "handler_map.hpp"
 #include "receive_pdo.hpp"
 #include "receive_pdo_configurator.hpp"
 #include "transmit_pdo_configurator.hpp"
 #include "transmit_pdo.hpp"
 #include "sdo_client.hpp"
+#include "canopen_device_node.hpp"
 
 namespace modm_canopen
 {
 
-template<typename OD, typename... Protocols>
+template<typename... Devices>
 class CanopenMaster
 {
 public:
-	using ObjectDictionary = OD;
-	using ReceivePdo_t = ReceivePdo<OD>;
-	using TransmitPdo_t = TransmitPdo<OD>;
-	using SdoClient_t = SdoClient<CanopenMaster>;
+	using SdoClient_t = SdoClient<CanopenMaster<Devices...>>;
+	using Device_t = std::variant<std::monostate, Devices...>;
 
 	static void
 	setValueChanged(Address address);
@@ -36,41 +36,39 @@ public:
 	static void
 	update(MessageCallback&& cb);
 
+	template<typename Device>
+	static Device&
+	addDevice(uint8_t id);
+
+	static void
+	removeDevice(uint8_t id);
+
 private:
 	friend SdoClient_t;
-
-	using Map = HandlerMap<OD>;
-
-	static constexpr auto
-	registerHandlers() -> HandlerMap<OD>;
-	static constexpr auto
-	constructHandlerMap() -> HandlerMap<OD>;
-
-	static constexpr HandlerMap<OD> accessHandlers = constructHandlerMap();
-
 	static inline uint8_t nodeId_{};
-
-	static inline std::vector<ReceivePdo_t> receivePdos_{};
-	static inline std::vector<TransmitPdo_t> transmitPdos_{};
+	static inline std::map<uint8_t, Device_t> devices_{};
 
 public:
 	// TODO: replace return value with std::expected like type, add error code to read handler
 	static auto
-	read(Address address) -> std::variant<Value, SdoErrorCode>;
+	read(uint8_t id, Address address) -> std::variant<Value, SdoErrorCode>;
 	static auto
-	write(Address address, Value value) -> SdoErrorCode;
+	write(uint8_t id, Address address, Value value) -> SdoErrorCode;
 	static auto
-	write(Address address, std::span<const uint8_t> data, int8_t size = -1) -> SdoErrorCode;
+	write(uint8_t id, Address address, std::span<const uint8_t> data, int8_t size = -1)
+		-> SdoErrorCode;
 
 	static uint32_t
 	rpdoCanId(uint8_t nodeId, uint8_t index);
 	static uint32_t
 	tpdoCanId(uint8_t nodeId, uint8_t index);
 
+	template<typename OD>
 	static void
-	setRPDO(uint8_t sourceId, uint8_t pdoId, ReceivePdo_t& pdo);
+	setRPDO(uint8_t sourceId, uint8_t pdoId, ReceivePdo<OD>& pdo);
+	template<typename OD>
 	static void
-	setTPDO(uint8_t destinationId, uint8_t pdoId, TransmitPdo_t& pdo);
+	setTPDO(uint8_t destinationId, uint8_t pdoId, TransmitPdo<OD>& pdo);
 
 	static SdoErrorCode
 	setRPDOActive(uint8_t sourceId, uint8_t pdoId, bool active);
@@ -87,14 +85,14 @@ public:
 	setRemoteTPDOActive(uint8_t remoteId, uint8_t pdoId, bool active,
 						MessageCallback&& sendMessage);
 
-	template<typename MessageCallback>
+	template<typename OD, typename MessageCallback>
 	static void
-	configureRemoteRPDO(uint8_t remoteId, uint8_t pdoId, TransmitPdo_t pdo,
+	configureRemoteRPDO(uint8_t remoteId, uint8_t pdoId, TransmitPdo<OD> pdo,
 						MessageCallback&& sendMessage);
 
-	template<typename MessageCallback>
+	template<typename OD, typename MessageCallback>
 	static void
-	configureRemoteTPDO(uint8_t remoteId, uint8_t pdoId, ReceivePdo_t pdo,
+	configureRemoteTPDO(uint8_t remoteId, uint8_t pdoId, ReceivePdo<OD> pdo,
 						MessageCallback&& sendMessage);
 };
 

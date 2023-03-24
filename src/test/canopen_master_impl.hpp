@@ -4,252 +4,217 @@
 
 namespace modm_canopen
 {
-namespace detail
-{
 
-template<Address address>
-struct missing_read_handler
+template<class... Ts>
+struct overloaded : Ts...
 {
-	static_assert(address == Address{}, "Read handler not registered for at least one object");
-};
+	using Ts::operator()...;
+};  // i hate this
 
-template<Address address>
-struct missing_write_handler
+template<typename... Devices>
+void
+CanopenMaster<Devices...>::removeDevice(uint8_t id)
 {
-	static_assert(address == Address{}, "Write handler not registered for at least one object");
-};
+	devices_.erase(id);
+}
 
-}  // namespace detail
-
-template<typename OD, typename... Protocols>
-auto
-CanopenMaster<OD, Protocols...>::write(Address address, Value value) -> SdoErrorCode
+template<typename... Devices>
+template<typename Device>
+Device&
+CanopenMaster<Devices...>::addDevice(uint8_t id)
 {
-	auto entry = OD::map.lookup(address);
-	if (!entry) { return SdoErrorCode::ObjectDoesNotExist; }
-	if (value.index() != static_cast<uint32_t>(entry->dataType))
+	devices_.emplace(id, Device(id));
+	return std::get<Device>(devices_.at(id));
+}
+
+template<typename... Devices>
+void
+CanopenMaster<Devices...>::setValueChanged(Address address)
+{
+	for (auto& device : devices_)
 	{
-		return SdoErrorCode::UnsupportedAccess;
-	}
-
-	auto handler = accessHandlers.lookupWriteHandler(address);
-	if (handler)
-	{
-		const auto result = callWriteHandler(*handler, value);
-		if (result == SdoErrorCode::NoError) { setValueChanged(address); }
-		return result;
-	} else if (!entry->isWritable())
-	{
-		return SdoErrorCode::WriteOfReadOnlyObject;
-	} else
-	{  // TODO: can this happen?
-		return SdoErrorCode::UnsupportedAccess;
+		std::visit(overloaded{[](std::monostate) {},
+							  [&address](auto&& device) { device.setValueChanged(address); }},
+				   device.second);
 	}
 }
 
-template<typename OD, typename... Protocols>
+template<typename... Devices>
 auto
-CanopenMaster<OD, Protocols...>::write(Address address, std::span<const uint8_t> data, int8_t size)
-	-> SdoErrorCode
+CanopenMaster<Devices...>::write(uint8_t id, Address address, Value value) -> SdoErrorCode
 {
-	auto entry = OD::map.lookup(address);
-	if (!entry) { return SdoErrorCode::ObjectDoesNotExist; }
-	if (!entry->isWritable()) { return SdoErrorCode::WriteOfReadOnlyObject; }
-
-	const auto objectSize = getDataTypeSize(entry->dataType);
-	const bool sizeIsValid =
-		(objectSize <= data.size()) && ((size == -1) || (size == int8_t(objectSize)));
-	if (!sizeIsValid) { return SdoErrorCode::UnsupportedAccess; }
-
-	auto handler = accessHandlers.lookupWriteHandler(address);
-	if (handler)
+	for (auto& device : devices_)
 	{
-		const Value value = valueFromBytes(entry->dataType, data.data());
-		const auto result = callWriteHandler(*handler, value);
-		if (result == SdoErrorCode::NoError) { setValueChanged(address); }
 
-		return result;
+		auto temp = std::visit(
+			overloaded{[](std::monostate) { return std::optional<SdoErrorCode>{}; },
+					   [id, address, value](auto&& device) {
+						   if (device.nodeId() == id)
+						   {
+							   return std::optional<SdoErrorCode>{device.write(address, value)};
+						   }
+						   return std::optional<SdoErrorCode>{};
+					   }},
+			device.second);
+		if (temp.has_value()) return *temp;
 	}
-	return SdoErrorCode::UnsupportedAccess;
+	return SdoErrorCode::GeneralError;
 }
 
-template<typename OD, typename... Protocols>
+template<typename... Devices>
 auto
-CanopenMaster<OD, Protocols...>::read(Address address) -> std::variant<Value, SdoErrorCode>
+CanopenMaster<Devices...>::write(uint8_t id, Address address, std::span<const uint8_t> data,
+								 int8_t size) -> SdoErrorCode
 {
-	auto handler = accessHandlers.lookupReadHandler(address);
-	if (handler)
+	for (auto& device : devices_)
 	{
-		return callReadHandler(*handler);
-	} else
-	{
-		auto entry = OD::map.lookup(address);
-		if (!entry)
-		{
-			return SdoErrorCode::ObjectDoesNotExist;
-		} else if (entry->isReadable())
-		{
-			return SdoErrorCode::ReadOfWriteOnlyObject;
-		}
+
+		auto temp =
+			std::visit(overloaded{[](std::monostate) { return std::optional<SdoErrorCode>{}; },
+								  [id, address, data, size](auto&& device) {
+									  if (device.nodeId() == id)
+									  {
+										  return std::optional<SdoErrorCode>{
+											  device.write(address, data, size)};
+									  }
+									  return std::optional<SdoErrorCode>{};
+								  }},
+					   device.second);
+		if (temp.has_value()) return *temp;
 	}
-	return SdoErrorCode::UnsupportedAccess;
+	return SdoErrorCode::GeneralError;
 }
 
-template<typename OD, typename... Protocols>
+template<typename... Devices>
+auto
+CanopenMaster<Devices...>::read(uint8_t id, Address address) -> std::variant<Value, SdoErrorCode>
+{
+	for (auto& device : devices_)
+	{
+
+		auto temp = std::visit(
+			overloaded{
+				[](std::monostate) { return std::optional<std::variant<Value, SdoErrorCode>>{}; },
+				[id, address](auto&& device) {
+					if (device.nodeId() == id)
+					{
+						return std::optional<std::variant<Value, SdoErrorCode>>{
+							device.read(address)};
+					}
+					return std::optional<std::variant<Value, SdoErrorCode>>{};
+				}},
+			device);
+		if (temp.has_value()) return *temp;
+	}
+	return SdoErrorCode::GeneralError;
+}
+
+template<typename... Devices>
 template<typename MessageCallback>
 void
-CanopenMaster<OD, Protocols...>::processMessage(const modm::can::Message& message,
-												MessageCallback&& cb)
+CanopenMaster<Devices...>::processMessage(const modm::can::Message& message, MessageCallback&& cb)
 {
-	for (auto& rpdo : receivePdos_)
+	for (auto& pair : devices_)
 	{
-		rpdo.processMessage(message, [](Address address, Value value) { write(address, value); });
+		std::visit(overloaded{[](std::monostate) {},
+							  [&message](auto&& arg) { arg.processMessage(message); }},
+				   pair.second);
 	}
 	SdoClient_t::processMessage(message, std::forward<MessageCallback>(cb));
 }
 
-template<typename OD, typename... Protocols>
+template<typename... Devices>
 template<typename MessageCallback>
 void
-CanopenMaster<OD, Protocols...>::update(MessageCallback&& cb)
+CanopenMaster<Devices...>::update(MessageCallback&& cb)
 {
-	for (auto& tpdo : transmitPdos_)
+	for (auto& pair : devices_)
 	{
-		if (tpdo.isActive())
-		{
-			auto message = tpdo.nextMessage([](Address address) { return read(address); });
-			if (message) { std::forward<MessageCallback>(cb)(*message); }
-		}
+		std::visit(overloaded{[](std::monostate) {},
+							  [&cb](auto&& arg) { arg.update(std::forward<MessageCallback>(cb)); }},
+				   pair.second);
 	}
 	SdoClient_t::update(cb);
 }
 
-template<typename OD, typename... Protocols>
-void
-CanopenMaster<OD, Protocols...>::setValueChanged(Address address)
-{
-	for (auto& tpdo : transmitPdos_)
-	{
-		if (tpdo.isActive())
-		{
-			for (uint_fast8_t i = 0; i < tpdo.mappingCount(); ++i)
-			{
-				if (tpdo.mapping(i).address == address)
-				{
-					tpdo.setValueUpdated();
-					break;
-				}
-			}
-		}
-	}
-}
-
-template<typename OD, typename... Protocols>
-constexpr auto
-CanopenMaster<OD, Protocols...>::registerHandlers() -> HandlerMap<OD>
-{
-	HandlerMap<OD> handlers;
-	(Protocols{}.registerHandlers(handlers), ...);
-
-	return handlers;
-}
-
-template<typename OD, typename... Protocols>
-constexpr auto
-CanopenMaster<OD, Protocols...>::constructHandlerMap() -> HandlerMap<OD>
-{
-	constexpr HandlerMap<OD> handlers = registerHandlers();
-	detail::missing_read_handler<findMissingReadHandler(handlers)>();
-	detail::missing_write_handler<findMissingWriteHandler(handlers)>();
-	return handlers;
-}
-
-template<typename OD, typename... Protocols>
+template<typename... Devices>
 uint32_t
-CanopenMaster<OD, Protocols...>::tpdoCanId(uint8_t nodeId, uint8_t index)
+CanopenMaster<Devices...>::tpdoCanId(uint8_t nodeId, uint8_t index)
 {
 	return (0x100 * (index + 1) + 0x100) | nodeId;  // Reverse than in device
 }
-template<typename OD, typename... Protocols>
+template<typename... Devices>
 uint32_t
-CanopenMaster<OD, Protocols...>::rpdoCanId(uint8_t nodeId, uint8_t index)
+CanopenMaster<Devices...>::rpdoCanId(uint8_t nodeId, uint8_t index)
 {
 	return (0x100 * (index + 1) + 0x80) | nodeId;  // Reverse than in device
 }
 
-template<typename OD, typename... Protocols>
+template<typename... Devices>
+template<typename OD>
 void
-CanopenMaster<OD, Protocols...>::setRPDO(uint8_t sourceId, uint8_t pdoId, ReceivePdo_t& pdo)
+CanopenMaster<Devices...>::setRPDO(uint8_t sourceId, uint8_t pdoId, ReceivePdo<OD>& pdo)
 {
 	auto canId = rpdoCanId(sourceId, pdoId);
 	pdo.setCanId(canId);
-	for (auto& rpdo : receivePdos_)
+	if (devices_.count(sourceId))
 	{
-		if (rpdo.canId() == canId)
-		{
-			rpdo = pdo;
-			return;
-		}
+		std::visit(
+			overloaded{[](std::monostate) {},
+					   [sourceId, pdoId, &pdo](auto&& arg) { arg.setReceivePdo(pdoId, pdo); }},
+			devices_[sourceId]);
 	}
-	receivePdos_.push_back(pdo);
 }
-template<typename OD, typename... Protocols>
+template<typename... Devices>
+template<typename OD>
 void
-CanopenMaster<OD, Protocols...>::setTPDO(uint8_t destinationId, uint8_t pdoId, TransmitPdo_t& pdo)
+CanopenMaster<Devices...>::setTPDO(uint8_t destinationId, uint8_t pdoId, TransmitPdo<OD>& pdo)
 {
 	auto canId = tpdoCanId(destinationId, pdoId);
 	pdo.setCanId(canId);
-	for (auto& tpdo : transmitPdos_)
+	if (devices_.contains(destinationId))
 	{
-		if (tpdo.canId() == canId)
-		{
-			tpdo = pdo;
-			return;
-		}
+		std::visit(
+			overloaded{[](std::monostate) {}, [destinationId, pdoId, &pdo](
+												  auto&& arg) { arg.setTransmitPdo(pdoId, pdo); }},
+			devices_[destinationId]);
 	}
-	transmitPdos_.push_back(pdo);
 }
 
-template<typename OD, typename... Protocols>
+template<typename... Devices>
 SdoErrorCode
-CanopenMaster<OD, Protocols...>::setRPDOActive(uint8_t sourceId, uint8_t pdoId, bool active)
+CanopenMaster<Devices...>::setRPDOActive(uint8_t sourceId, uint8_t pdoId, bool active)
 {
-	auto canId = rpdoCanId(sourceId, pdoId);
-	for (auto& rpdo : receivePdos_)
+	if (devices_.contains(sourceId))
 	{
-		if (rpdo.canId() == canId)
-		{
-			if (active)
-				return rpdo.setActive();
-			else
-				return rpdo.setInactive();
-		}
+		return std::visit(overloaded{[](std::monostate) { return SdoErrorCode::PdoMappingError; },
+									 [sourceId, pdoId, active](auto&& arg) {
+										 return arg.setRPDOActive(sourceId, pdoId, active);
+									 }},
+						  devices_[sourceId]);
 	}
 	return SdoErrorCode::PdoMappingError;
 }
-template<typename OD, typename... Protocols>
+template<typename... Devices>
 SdoErrorCode
-CanopenMaster<OD, Protocols...>::setTPDOActive(uint8_t destinationId, uint8_t pdoId, bool active)
+CanopenMaster<Devices...>::setTPDOActive(uint8_t destinationId, uint8_t pdoId, bool active)
 {
-	auto canId = tpdoCanId(destinationId, pdoId);
-	for (auto& tpdo : transmitPdos_)
+	if (devices_.contains(destinationId))
 	{
-		if (tpdo.canId() == canId)
-		{
-			if (active)
-				return tpdo.setActive();
-			else
-				return tpdo.setInactive();
-		}
+		return std::visit(overloaded{[](std::monostate) { return SdoErrorCode::PdoMappingError; },
+									 [destinationId, pdoId, active](auto&& arg) {
+										 return arg.setTPDOActive(destinationId, pdoId, active);
+									 }},
+						  devices_[destinationId]);
 	}
 	return SdoErrorCode::PdoMappingError;
 }
 
-template<typename OD, typename... Protocols>
+template<typename... Devices>
 template<typename MessageCallback>
 void
-CanopenMaster<OD, Protocols...>::setRemoteRPDOActive(uint8_t remoteId, uint8_t pdoId, bool active,
-													 MessageCallback&& sendMessage)
+CanopenMaster<Devices...>::setRemoteRPDOActive(uint8_t remoteId, uint8_t pdoId, bool active,
+											   MessageCallback&& sendMessage)
 {
 
 	const uint16_t rpdoCommParamAddr = 0x1400 + pdoId;
@@ -261,11 +226,11 @@ CanopenMaster<OD, Protocols...>::setRemoteRPDOActive(uint8_t remoteId, uint8_t p
 	SdoClient_t::requestWrite(remoteId, rpdoCobIdAddr, (uint32_t)rpdoCobId,
 							  std::forward<MessageCallback>(sendMessage));
 }
-template<typename OD, typename... Protocols>
+template<typename... Devices>
 template<typename MessageCallback>
 void
-CanopenMaster<OD, Protocols...>::setRemoteTPDOActive(uint8_t remoteId, uint8_t pdoId, bool active,
-													 MessageCallback&& sendMessage)
+CanopenMaster<Devices...>::setRemoteTPDOActive(uint8_t remoteId, uint8_t pdoId, bool active,
+											   MessageCallback&& sendMessage)
 {
 	uint16_t tpdoCommParamAddr = 0x1800 + pdoId;
 	const auto tpdoCobIdAddr = Address{tpdoCommParamAddr, 1};
@@ -277,12 +242,11 @@ CanopenMaster<OD, Protocols...>::setRemoteTPDOActive(uint8_t remoteId, uint8_t p
 							  std::forward<MessageCallback>(sendMessage));
 }
 
-template<typename OD, typename... Protocols>
-template<typename MessageCallback>
+template<typename... Devices>
+template<typename OD, typename MessageCallback>
 void
-CanopenMaster<OD, Protocols...>::configureRemoteRPDO(uint8_t remoteId, uint8_t pdoId,
-													 TransmitPdo_t pdo,
-													 MessageCallback&& sendMessage)
+CanopenMaster<Devices...>::configureRemoteRPDO(uint8_t remoteId, uint8_t pdoId, TransmitPdo<OD> pdo,
+											   MessageCallback&& sendMessage)
 {
 	pdo.setInactive();
 	setRemoteRPDOActive(remoteId, pdoId, false, std::forward<MessageCallback>(sendMessage));
@@ -305,12 +269,11 @@ CanopenMaster<OD, Protocols...>::configureRemoteRPDO(uint8_t remoteId, uint8_t p
 							  std::forward<MessageCallback>(sendMessage));
 	setRemoteRPDOActive(remoteId, pdoId, true, std::forward<MessageCallback>(sendMessage));
 }
-template<typename OD, typename... Protocols>
-template<typename MessageCallback>
+template<typename... Devices>
+template<typename OD, typename MessageCallback>
 void
-CanopenMaster<OD, Protocols...>::configureRemoteTPDO(uint8_t remoteId, uint8_t pdoId,
-													 ReceivePdo_t pdo,
-													 MessageCallback&& sendMessage)
+CanopenMaster<Devices...>::configureRemoteTPDO(uint8_t remoteId, uint8_t pdoId, ReceivePdo<OD> pdo,
+											   MessageCallback&& sendMessage)
 {
 	pdo.setInactive();
 	setRemoteTPDOActive(remoteId, pdoId, false, std::forward<MessageCallback>(sendMessage));
