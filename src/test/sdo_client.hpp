@@ -37,6 +37,9 @@ public:
 	static bool
 	waiting();
 
+	static bool
+	waitingOn(uint8_t id);
+
 private:
 	struct WaitingEntry
 	{
@@ -47,7 +50,7 @@ private:
 		modm::can::Message msg;
 	};
 
-	static std::vector<WaitingEntry> waitingOn;
+	static std::vector<WaitingEntry> waitingOn_;
 
 	static void
 	addWaitingEntry(uint8_t canId, Address address, bool isRead, modm::can::Message msg);

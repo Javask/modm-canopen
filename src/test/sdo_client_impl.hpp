@@ -6,7 +6,7 @@ namespace modm_canopen
 {
 using namespace std::literals;
 template<typename Device>
-std::vector<typename SdoClient<Device>::WaitingEntry> SdoClient<Device>::waitingOn{};
+std::vector<typename SdoClient<Device>::WaitingEntry> SdoClient<Device>::waitingOn_{};
 
 template<typename Device>
 template<typename MessageCallback>
@@ -15,7 +15,7 @@ SdoClient<Device>::update(MessageCallback&& sendMessage)
 {
 	constexpr modm::Clock::duration timeout{100ms};
 	auto now = modm::Clock::now();
-	for (auto& wait : waitingOn)
+	for (auto& wait : waitingOn_)
 	{
 		auto timesince = now - wait.sent;
 		if (timesince > timeout)
@@ -53,31 +53,31 @@ SdoClient<Device>::processMessage(const modm::can::Message& request,
 	const bool isDownload = (request.data[0] & ResponseMask) == downloadResponse;
 	const bool isAbort = (request.data[0] & ResponseMask) == abortResponse;
 
-	for (auto it = waitingOn.begin(); it != waitingOn.end(); ++it)
+	for (auto it = waitingOn_.begin(); it != waitingOn_.end(); ++it)
 	{
 		if (it->canId + (uint32_t)0x580 == request.getIdentifier() && address == it->address)
 		{
 
 			if (isUpload)
 			{
-				waitingOn.erase(it);
+				waitingOn_.erase(it);
 				const SdoErrorCode error = Device::write(
 					it->canId, address, std::span<const uint8_t>{&request.data[4], 4}, size);
-				std::forward<MessageCallback>(responseCallback)(address, error);
+				std::forward<MessageCallback>(responseCallback)(it->canId, address, error);
 				return;
 			}
 			if (isDownload)
 			{
-				waitingOn.erase(it);
-				std::forward<MessageCallback>(responseCallback)(address, SdoErrorCode::NoError);
+				waitingOn_.erase(it);
+				std::forward<MessageCallback>(responseCallback)(it->canId, address, SdoErrorCode::NoError);
 				return;
 			}
 			if (isAbort)
 			{
-				waitingOn.erase(it);
+				waitingOn_.erase(it);
 				static_assert(sizeof(SdoErrorCode) == 4);
 				SdoErrorCode err = *((SdoErrorCode*)&request.data[4]);
-				std::forward<MessageCallback>(responseCallback)(address, err);
+				std::forward<MessageCallback>(responseCallback)(it->canId, address, err);
 				return;
 			}
 		}
@@ -129,14 +129,25 @@ SdoClient<Device>::addWaitingEntry(uint8_t canId, Address address, bool isRead,
 					   .isRead = isRead,
 					   .sent = modm::Clock::now(),
 					   .msg = msg};
-	waitingOn.push_back(entry);
+	waitingOn_.push_back(entry);
 }
 
 template<typename Device>
 bool
 SdoClient<Device>::waiting()
 {
-	return !waitingOn.empty();
+	return !waitingOn_.empty();
+}
+
+template<typename Device>
+bool
+SdoClient<Device>::waitingOn(uint8_t id)
+{
+	for (auto& entry : waitingOn_)
+	{
+		if (entry.canId == id) return true;
+	}
+	return false;
 }
 
 auto
