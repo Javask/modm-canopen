@@ -95,6 +95,7 @@ enum class StateCommandNames : uint8_t
 	DisableOperation = 3,
 	EnableOperation = 4,
 	FaultReset = 5,
+	QuickStop = 6,
 };
 
 }  // namespace cia402
