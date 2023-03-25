@@ -28,6 +28,14 @@ CanopenMaster<Devices...>::addDevice(uint8_t id)
 }
 
 template<typename... Devices>
+template<typename Device>
+Device&
+CanopenMaster<Devices...>::getDevice(uint8_t id)
+{
+	return std::get<Device>(devices_.at(id));
+}
+
+template<typename... Devices>
 void
 CanopenMaster<Devices...>::setValueChanged(Address address)
 {
