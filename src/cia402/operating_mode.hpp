@@ -12,5 +12,8 @@ enum OperatingMode : int8_t
 	Position = 1,  // Profile position mode
 	Velocity = 3
 };
-}
+
+const char*
+operatingModeToString(OperatingMode mode);
+}  // namespace cia402
 }  // namespace modm_canopen
