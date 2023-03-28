@@ -62,6 +62,9 @@ public:
 	write(uint8_t id, Address address, std::span<const uint8_t> data, int8_t size = -1)
 		-> SdoErrorCode;
 
+	static std::optional<Value>
+	toValue(uint8_t id, Address address, std::span<const uint8_t> data, int8_t size = -1);
+
 	static uint32_t
 	rpdoCanId(uint8_t nodeId, uint8_t index);
 	static uint32_t

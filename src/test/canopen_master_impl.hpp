@@ -94,6 +94,28 @@ CanopenMaster<Devices...>::write(uint8_t id, Address address, std::span<const ui
 }
 
 template<typename... Devices>
+std::optional<Value>
+CanopenMaster<Devices...>::toValue(uint8_t id, Address address, std::span<const uint8_t> data,
+								   int8_t size)
+{
+	for (auto& device : devices_)
+	{
+
+		auto temp = std::visit(overloaded{[](std::monostate) { return std::optional<Value>{}; },
+										  [id, address, data, size](auto&& device) {
+											  if (device.nodeId() == id)
+											  {
+												  return device.toValue(address, data, size);
+											  }
+											  return std::optional<Value>{};
+										  }},
+							   device.second);
+		if (temp.has_value()) return *temp;
+	}
+	return {};
+}
+
+template<typename... Devices>
 auto
 CanopenMaster<Devices...>::read(uint8_t id, Address address) -> std::variant<Value, SdoErrorCode>
 {

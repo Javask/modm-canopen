@@ -32,6 +32,22 @@ CanopenDevice<OD, Protocols...>::write(Address address, Value value) -> SdoError
 }
 
 template<typename OD, typename... Protocols>
+std::optional<Value>
+CanopenDevice<OD, Protocols...>::toValue(Address address, std::span<const uint8_t> data,
+										 int8_t size)
+{
+	auto entry = OD::map.lookup(address);
+	if (!entry) { return {}; }
+	if (!entry->isWritable()) { return {}; }
+
+	const auto objectSize = getDataTypeSize(entry->dataType);
+	const bool sizeIsValid =
+		(objectSize <= data.size()) && ((size == -1) || (size == int8_t(objectSize)));
+	if (!sizeIsValid) { return {}; }
+	return valueFromBytes(entry->dataType, data.data());
+}
+
+template<typename OD, typename... Protocols>
 auto
 CanopenDevice<OD, Protocols...>::write(Address address, std::span<const uint8_t> data, int8_t size)
 	-> SdoErrorCode

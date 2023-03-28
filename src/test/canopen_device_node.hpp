@@ -73,6 +73,9 @@ public:
 	auto
 	write(Address address, std::span<const uint8_t> data, int8_t size = -1) -> SdoErrorCode;
 
+	std::optional<Value>
+	toValue(Address address, std::span<const uint8_t> data, int8_t size = -1);
+
 	void
 	setReceivePdoActive(uint8_t index, bool active);
 	void

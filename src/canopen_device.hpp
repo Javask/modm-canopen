@@ -3,6 +3,7 @@
 
 #include <array>
 #include <span>
+#include <optional>
 #include "object_dictionary.hpp"
 #include "handler_map.hpp"
 #include "receive_pdo.hpp"
@@ -74,6 +75,9 @@ public:
 	write(Address address, Value value) -> SdoErrorCode;
 	static auto
 	write(Address address, std::span<const uint8_t> data, int8_t size = -1) -> SdoErrorCode;
+
+	static std::optional<Value>
+	toValue(Address address, std::span<const uint8_t> data, int8_t size = -1);
 
 	static uint32_t
 	rpdoCanId(uint8_t index);

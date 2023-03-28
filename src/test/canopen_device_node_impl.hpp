@@ -32,6 +32,20 @@ CanopenNode<OD, Protocols...>::write(Address address, Value value) -> SdoErrorCo
 }
 
 template<typename OD, typename... Protocols>
+std::optional<Value>
+CanopenNode<OD, Protocols...>::toValue(Address address, std::span<const uint8_t> data, int8_t size)
+{
+	auto entry = ObjectDictionary::map.lookup(address);
+	if (!entry) { return {}; }
+	if (!entry->isWritable()) { return {}; }
+	const auto objectSize = getDataTypeSize(entry->dataType);
+	const bool sizeIsValid =
+		(objectSize <= data.size()) && ((size == -1) || (size == int8_t(objectSize)));
+	if (!sizeIsValid) { return {}; }
+	return valueFromBytes(entry->dataType, data.data());
+}
+
+template<typename OD, typename... Protocols>
 auto
 CanopenNode<OD, Protocols...>::write(Address address, std::span<const uint8_t> data, int8_t size)
 	-> SdoErrorCode

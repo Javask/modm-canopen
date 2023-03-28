@@ -61,15 +61,26 @@ SdoClient<Device>::processMessage(const modm::can::Message& request,
 			if (isUpload)
 			{
 				waitingOn_.erase(it);
-				const SdoErrorCode error = Device::write(
-					it->canId, address, std::span<const uint8_t>{&request.data[4], 4}, size);
+				SdoErrorCode error = SdoErrorCode::NoError;
+				if (it->callback)
+				{
+					auto val = Device::toValue(it->canId, address,
+											   std::span<const uint8_t>{&request.data[4], 4}, size);
+					if (val) { it->callback(*val); }
+				} else
+				{
+					error = Device::write(it->canId, address,
+										  std::span<const uint8_t>{&request.data[4], 4}, size);
+				}
 				std::forward<MessageCallback>(responseCallback)(it->canId, address, error);
+
 				return;
 			}
 			if (isDownload)
 			{
 				waitingOn_.erase(it);
-				std::forward<MessageCallback>(responseCallback)(it->canId, address, SdoErrorCode::NoError);
+				std::forward<MessageCallback>(responseCallback)(it->canId, address,
+																SdoErrorCode::NoError);
 				return;
 			}
 			if (isAbort)
@@ -91,6 +102,18 @@ SdoClient<Device>::requestRead(uint8_t canId, Address address, MessageCallback&&
 {
 	auto msg = detail::uploadMessage(canId, address);
 	addWaitingEntry(canId, address, true, msg);
+	sendMessage(msg);
+}
+
+template<typename Device>
+template<typename MessageCallback>
+void
+SdoClient<Device>::requestRead(uint8_t canId, Address address,
+							   std::function<void(Value)>&& valueCallback,
+							   MessageCallback&& sendMessage)
+{
+	auto msg = detail::uploadMessage(canId, address);
+	addWaitingEntry(canId, address, true, msg, std::move(valueCallback));
 	sendMessage(msg);
 }
 
@@ -128,7 +151,22 @@ SdoClient<Device>::addWaitingEntry(uint8_t canId, Address address, bool isRead,
 					   .address = address,
 					   .isRead = isRead,
 					   .sent = modm::Clock::now(),
-					   .msg = msg};
+					   .msg = msg,
+					   .callback = {}};
+	waitingOn_.push_back(entry);
+}
+
+template<typename Device>
+void
+SdoClient<Device>::addWaitingEntry(uint8_t canId, Address address, bool isRead,
+								   modm::can::Message msg, std::function<void(Value)>&& func)
+{
+	WaitingEntry entry{.canId = canId,
+					   .address = address,
+					   .isRead = isRead,
+					   .sent = modm::Clock::now(),
+					   .msg = msg,
+					   .callback = std::move(func)};
 	waitingOn_.push_back(entry);
 }
 
