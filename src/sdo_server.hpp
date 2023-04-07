@@ -41,14 +41,15 @@ private:
 
 namespace detail
 {
-inline auto
-uploadResponse(uint32_t txCOBId, Address address, const Value& value) -> modm::can::Message;
+inline void
+uploadResponse(uint32_t txCOBId, Address address, const Value& value, modm::can::Message& msg);
 
-inline auto
-downloadResponse(uint32_t txCOBId, Address address) -> modm::can::Message;
+inline void
+downloadResponse(uint32_t txCOBId, Address address, modm::can::Message& msg);
 
-inline auto
-transferAbort(uint32_t txCOBId, Address address, SdoErrorCode error) -> modm::can::Message;
+inline void
+transferAbort(uint32_t txCOBId, Address address, SdoErrorCode error, modm::can::Message& msg);
+
 };  // namespace detail
 
 }  // namespace modm_canopen

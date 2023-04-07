@@ -26,7 +26,9 @@ SdoServer<Device>::processMessage(const modm::can::Message& request, C&& cb)
 			auto result = Device::read(address);
 			if (const SdoErrorCode* error = std::get_if<SdoErrorCode>(&result); error)
 			{
-				std::forward<C>(cb)(detail::transferAbort(txCOBId(), address, *error));
+				modm::can::Message msg;
+				detail::transferAbort(txCOBId(), address, *error, msg);
+				std::forward<C>(cb)(msg);
 			} else
 			{
 				// std::get_if can't return nullptr
@@ -34,11 +36,14 @@ SdoServer<Device>::processMessage(const modm::can::Message& request, C&& cb)
 				const Value& value = *std::get_if<Value>(&result);
 				if (valueSupportsExpediteTransfer(value))
 				{
-					std::forward<C>(cb)(detail::uploadResponse(txCOBId(), address, value));
+					modm::can::Message msg;
+					detail::uploadResponse(txCOBId(), address, value, msg);
+					std::forward<C>(cb)(msg);
 				} else
 				{
-					std::forward<C>(cb)(
-						detail::transferAbort(txCOBId(), address, SdoErrorCode::UnsupportedAccess));
+					modm::can::Message msg;
+					detail::transferAbort(txCOBId(), address, SdoErrorCode::UnsupportedAccess, msg);
+					std::forward<C>(cb)(msg);
 				}
 			}
 		} else if ((request.data[0] & commandDownloadMask) == commandExpediteDownload)
@@ -49,15 +54,20 @@ SdoServer<Device>::processMessage(const modm::can::Message& request, C&& cb)
 				Device::write(address, std::span<const uint8_t>{&request.data[4], 4}, size);
 			if (error == SdoErrorCode::NoError)
 			{
-				std::forward<C>(cb)(detail::downloadResponse(txCOBId(), address));
+				modm::can::Message msg;
+				detail::downloadResponse(txCOBId(), address, msg);
+				std::forward<C>(cb)(msg);
 			} else
 			{
-				std::forward<C>(cb)(detail::transferAbort(txCOBId(), address, error));
+				modm::can::Message msg;
+				detail::transferAbort(txCOBId(), address, error, msg);
+				std::forward<C>(cb)(msg);
 			}
 		} else
 		{
-			std::forward<C>(cb)(
-				detail::transferAbort(txCOBId(), address, SdoErrorCode::UnsupportedAccess));
+			modm::can::Message msg;
+			detail::transferAbort(txCOBId(), address, SdoErrorCode::UnsupportedAccess, msg);
+			std::forward<C>(cb)(msg);
 		}
 	}
 }
@@ -90,10 +100,11 @@ SdoServer<Device>::txCOBId()
 	return (uint32_t)nodeId_ + 0x580;
 }
 
-auto
-detail::uploadResponse(uint32_t txCOBId, Address address, const Value& value) -> modm::can::Message
+void
+detail::uploadResponse(uint32_t txCOBId, Address address, const Value& value,
+					   modm::can::Message& message)
 {
-	modm::can::Message message{txCOBId, 8};
+	message = modm::can::Message{txCOBId, 8};
 	message.setExtended(false);
 	const auto sizeFlags = (0b11 & (4 - getValueSize(value))) << 2;
 	message.data[0] = 0b010'0'00'1'1 | sizeFlags;
@@ -101,25 +112,25 @@ detail::uploadResponse(uint32_t txCOBId, Address address, const Value& value) ->
 	message.data[2] = (address.index & 0xFF'00) >> 8;
 	message.data[3] = address.subindex;
 	valueToBytes(value, &message.data[4]);
-	return message;
 }
 
-auto
-detail::downloadResponse(uint32_t txCOBId, Address address) -> modm::can::Message
+void
+detail::downloadResponse(uint32_t txCOBId, Address address, modm::can::Message& message)
+
 {
-	modm::can::Message message{txCOBId, 8};
+	message = modm::can::Message{txCOBId, 8};
 	message.setExtended(false);
 	message.data[0] = 0b011'00000;
 	message.data[1] = address.index & 0xFF;
 	message.data[2] = (address.index & 0xFF'00) >> 8;
 	message.data[3] = address.subindex;
-	return message;
 }
 
-auto
-detail::transferAbort(uint32_t txCOBId, Address address, SdoErrorCode error) -> modm::can::Message
+void
+detail::transferAbort(uint32_t txCOBId, Address address, SdoErrorCode error,
+					  modm::can::Message& message)
 {
-	modm::can::Message message{txCOBId, 8};
+	message = modm::can::Message{txCOBId, 8};
 	message.setExtended(false);
 	message.data[0] = 0b100'00000;
 	message.data[1] = address.index & 0xFF;
@@ -127,7 +138,6 @@ detail::transferAbort(uint32_t txCOBId, Address address, SdoErrorCode error) -> 
 	message.data[3] = address.subindex;
 	static_assert(sizeof(SdoErrorCode) == 4);
 	memcpy(&message.data[4], &error, sizeof(SdoErrorCode));
-	return message;
 }
 
 }  // namespace modm_canopen

@@ -100,7 +100,8 @@ template<typename MessageCallback>
 void
 SdoClient<Device>::requestRead(uint8_t canId, Address address, MessageCallback&& sendMessage)
 {
-	auto msg = detail::uploadMessage(canId, address);
+	modm::can::Message msg;
+	detail::uploadMessage(canId, address, msg);
 	addWaitingEntry(canId, address, true, msg);
 	sendMessage(msg);
 }
@@ -112,7 +113,8 @@ SdoClient<Device>::requestRead(uint8_t canId, Address address,
 							   std::function<void(Value)>&& valueCallback,
 							   MessageCallback&& sendMessage)
 {
-	auto msg = detail::uploadMessage(canId, address);
+	modm::can::Message msg;
+	detail::uploadMessage(canId, address, msg);
 	addWaitingEntry(canId, address, true, msg, std::move(valueCallback));
 	sendMessage(msg);
 }
@@ -125,7 +127,8 @@ SdoClient<Device>::requestWrite(uint8_t canId, Address address, MessageCallback&
 	auto value = Device::read(canId, address);
 	if (std::get_if<Value>(value))
 	{
-		auto msg = detail::downloadMessage(canId, address, std::get<Value>(value));
+		modm::can::Message msg;
+		detail::downloadMessage(canId, address, std::get<Value>(value), msg);
 		addWaitingEntry(canId, address, false, msg);
 		sendMessage(msg);
 	}
@@ -137,7 +140,8 @@ void
 SdoClient<Device>::requestWrite(uint8_t canId, Address address, const Value& value,
 								MessageCallback&& sendMessage)
 {
-	auto msg = detail::downloadMessage(canId, address, value);
+	modm::can::Message msg;
+	detail::downloadMessage(canId, address, value, msg);
 	addWaitingEntry(canId, address, false, msg);
 	sendMessage(msg);
 }
@@ -145,28 +149,30 @@ SdoClient<Device>::requestWrite(uint8_t canId, Address address, const Value& val
 template<typename Device>
 void
 SdoClient<Device>::addWaitingEntry(uint8_t canId, Address address, bool isRead,
-								   modm::can::Message msg)
+								   const modm::can::Message& msg)
 {
-	WaitingEntry entry{.canId = canId,
-					   .address = address,
-					   .isRead = isRead,
-					   .sent = modm::Clock::now(),
-					   .msg = msg,
-					   .callback = {}};
+	WaitingEntry entry{};
+	entry.canId = canId;
+	entry.address = address;
+	entry.isRead = isRead;
+	entry.sent = modm::Clock::now();
+	entry.msg = msg;
+	entry.callback = {};
 	waitingOn_.push_back(entry);
 }
 
 template<typename Device>
 void
 SdoClient<Device>::addWaitingEntry(uint8_t canId, Address address, bool isRead,
-								   modm::can::Message msg, std::function<void(Value)>&& func)
+								   const modm::can::Message& msg, std::function<void(Value)>&& func)
 {
-	WaitingEntry entry{.canId = canId,
-					   .address = address,
-					   .isRead = isRead,
-					   .sent = modm::Clock::now(),
-					   .msg = msg,
-					   .callback = std::move(func)};
+	WaitingEntry entry{};
+	entry.canId = canId;
+	entry.address = address;
+	entry.isRead = isRead;
+	entry.sent = modm::Clock::now();
+	entry.msg = msg;
+	entry.callback = std::move(func);
 	waitingOn_.push_back(entry);
 }
 
@@ -188,22 +194,22 @@ SdoClient<Device>::waitingOn(uint8_t id)
 	return false;
 }
 
-auto
-detail::uploadMessage(uint8_t nodeId, Address address) -> modm::can::Message
+void
+detail::uploadMessage(uint8_t nodeId, Address address, modm::can::Message& message)
 {
-	modm::can::Message message{uint32_t(0x600 + nodeId), 8};
+	message = modm::can::Message{uint32_t(0x600 + nodeId), 8};
 	message.setExtended(false);
 	message.data[0] = 0b010'00000;
 	message.data[1] = address.index & 0xFF;
 	message.data[2] = (address.index & 0xFF'00) >> 8;
 	message.data[3] = address.subindex;
-	return message;
 }
 
-auto
-detail::downloadMessage(uint8_t nodeId, Address address, const Value& value) -> modm::can::Message
+void
+detail::downloadMessage(uint8_t nodeId, Address address, const Value& value,
+						modm::can::Message& message)
 {
-	modm::can::Message message{uint32_t(0x600 + nodeId), 8};
+	message = modm::can::Message{uint32_t(0x600 + nodeId), 8};
 	message.setExtended(false);
 	const auto sizeFlags = (0b11 & (4 - getValueSize(value))) << 2;
 	message.data[0] = 0b001'0'00'1'1 | sizeFlags;
@@ -211,7 +217,6 @@ detail::downloadMessage(uint8_t nodeId, Address address, const Value& value) -> 
 	message.data[2] = (address.index & 0xFF'00) >> 8;
 	message.data[3] = address.subindex;
 	valueToBytes(value, &message.data[4]);
-	return message;
 }
 
 }  // namespace modm_canopen

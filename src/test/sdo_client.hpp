@@ -50,31 +50,86 @@ public:
 private:
 	struct WaitingEntry
 	{
+
 		uint8_t canId;
 		Address address;
 		bool isRead;
 		modm::Clock::time_point sent;
 		modm::can::Message msg;
 		std::function<void(Value)> callback;
+
+		inline WaitingEntry()
+		{
+			canId = 0;
+			address = {};
+			isRead = false;
+			sent = {};
+			msg = {};
+			callback = {};
+		}
+
+		inline WaitingEntry&
+		operator=(const WaitingEntry& other)
+		{
+			canId = other.canId;
+			address = other.address;
+			isRead = other.isRead;
+			sent = other.sent;
+			msg = other.msg;
+			callback = other.callback;
+			return *this;
+		}
+
+		inline WaitingEntry(const WaitingEntry& other)
+		{
+			canId = other.canId;
+			address = other.address;
+			isRead = other.isRead;
+			sent = other.sent;
+			msg = other.msg;
+			callback = other.callback;
+		};
+
+		inline WaitingEntry&
+		operator=(WaitingEntry&& other)
+		{
+			canId = std::move(other.canId);
+			address = std::move(other.address);
+			isRead = std::move(other.isRead);
+			sent = std::move(other.sent);
+			msg = std::move(other.msg);
+			callback = std::move(other.callback);
+			return *this;
+		};
+
+		inline WaitingEntry(WaitingEntry&& other)
+		{
+			canId = std::move(other.canId);
+			address = std::move(other.address);
+			isRead = std::move(other.isRead);
+			sent = std::move(other.sent);
+			msg = std::move(other.msg);
+			callback = std::move(other.callback);
+		};
 	};
 
 	static std::vector<WaitingEntry> waitingOn_;
 
 	static void
-	addWaitingEntry(uint8_t canId, Address address, bool isRead, modm::can::Message msg);
+	addWaitingEntry(uint8_t canId, Address address, bool isRead, const modm::can::Message& msg);
 
 	static void
-	addWaitingEntry(uint8_t canId, Address address, bool isRead, modm::can::Message msg,
+	addWaitingEntry(uint8_t canId, Address address, bool isRead, const modm::can::Message& msg,
 					std::function<void(Value)>&& func);
 };
 
 namespace detail
 {
-inline auto
-uploadMessage(uint8_t nodeId, Address address) -> modm::can::Message;
+inline void
+uploadMessage(uint8_t nodeId, Address address, modm::can::Message& message);
 
-inline auto
-downloadMessage(uint8_t nodeId, Address address, const Value& value) -> modm::can::Message;
+inline void
+downloadMessage(uint8_t nodeId, Address address, const Value& value, modm::can::Message& message);
 
 };  // namespace detail
 }  // namespace modm_canopen
