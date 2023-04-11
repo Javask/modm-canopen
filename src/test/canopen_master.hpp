@@ -6,6 +6,7 @@
 #include <variant>
 #include <tuple>
 #include <span>
+#include <mutex>
 #include "object_dictionary.hpp"
 #include "receive_pdo.hpp"
 #include "receive_pdo_configurator.hpp"
@@ -46,6 +47,8 @@ public:
 
 	static void
 	removeDevice(uint8_t id);
+
+	static inline std::mutex masterMutex_{};
 
 private:
 	friend SdoClient_t;

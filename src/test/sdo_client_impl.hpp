@@ -53,42 +53,43 @@ SdoClient<Device>::processMessage(const modm::can::Message& request,
 	const bool isDownload = (request.data[0] & ResponseMask) == downloadResponse;
 	const bool isAbort = (request.data[0] & ResponseMask) == abortResponse;
 
+	std::unique_lock lock(waitingOnMutex_);
 	for (auto it = waitingOn_.begin(); it != waitingOn_.end(); ++it)
 	{
+
 		if (it->canId + (uint32_t)0x580 == request.getIdentifier() && address == it->address)
 		{
 
 			if (isUpload)
 			{
-				waitingOn_.erase(it);
 				SdoErrorCode error = SdoErrorCode::NoError;
 				if (it->callback)
 				{
 					auto val = Device::toValue(it->canId, address,
 											   std::span<const uint8_t>{&request.data[4], 4}, size);
-					if (val) { it->callback(*val); }
+					if (val) { it->callback(it->canId, *val); }
 				} else
 				{
 					error = Device::write(it->canId, address,
 										  std::span<const uint8_t>{&request.data[4], 4}, size);
 				}
 				std::forward<MessageCallback>(responseCallback)(it->canId, address, error);
-
+				waitingOn_.erase(it);
 				return;
 			}
 			if (isDownload)
 			{
-				waitingOn_.erase(it);
 				std::forward<MessageCallback>(responseCallback)(it->canId, address,
 																SdoErrorCode::NoError);
+				waitingOn_.erase(it);
 				return;
 			}
 			if (isAbort)
 			{
-				waitingOn_.erase(it);
 				static_assert(sizeof(SdoErrorCode) == 4);
 				SdoErrorCode err = *((SdoErrorCode*)&request.data[4]);
 				std::forward<MessageCallback>(responseCallback)(it->canId, address, err);
+				waitingOn_.erase(it);
 				return;
 			}
 		}
@@ -110,7 +111,7 @@ template<typename Device>
 template<typename MessageCallback>
 void
 SdoClient<Device>::requestRead(uint8_t canId, Address address,
-							   std::function<void(Value)>&& valueCallback,
+							   std::function<void(const uint8_t, Value)>&& valueCallback,
 							   MessageCallback&& sendMessage)
 {
 	modm::can::Message msg;
@@ -164,7 +165,8 @@ SdoClient<Device>::addWaitingEntry(uint8_t canId, Address address, bool isRead,
 template<typename Device>
 void
 SdoClient<Device>::addWaitingEntry(uint8_t canId, Address address, bool isRead,
-								   const modm::can::Message& msg, std::function<void(Value)>&& func)
+								   const modm::can::Message& msg,
+								   std::function<void(const uint8_t, Value)>&& func)
 {
 	WaitingEntry entry{};
 	entry.canId = canId;
@@ -180,6 +182,7 @@ template<typename Device>
 bool
 SdoClient<Device>::waiting()
 {
+	std::unique_lock lock(waitingOnMutex_);
 	return !waitingOn_.empty();
 }
 
@@ -187,6 +190,7 @@ template<typename Device>
 bool
 SdoClient<Device>::waitingOn(uint8_t id)
 {
+	std::unique_lock lock(waitingOnMutex_);
 	for (auto& entry : waitingOn_)
 	{
 		if (entry.canId == id) return true;

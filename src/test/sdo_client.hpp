@@ -6,6 +6,7 @@
 #include <vector>
 #include <cstdint>
 #include <functional>
+#include <mutex>
 #include <optional>
 #include <modm/processing/timer.hpp>
 
@@ -22,7 +23,8 @@ public:
 
 	template<typename MessageCallback>
 	static void
-	requestRead(uint8_t canId, Address address, std::function<void(Value)>&& valueCallback,
+	requestRead(uint8_t canId, Address address,
+				std::function<void(const uint8_t, Value)>&& valueCallback,
 				MessageCallback&& sendMessage);
 
 	template<typename MessageCallback>
@@ -56,7 +58,7 @@ private:
 		bool isRead;
 		modm::Clock::time_point sent;
 		modm::can::Message msg;
-		std::function<void(Value)> callback;
+		std::function<void(const uint8_t, Value)> callback;
 
 		inline WaitingEntry()
 		{
@@ -113,6 +115,7 @@ private:
 		};
 	};
 
+	static inline std::mutex waitingOnMutex_;
 	static std::vector<WaitingEntry> waitingOn_;
 
 	static void
@@ -120,7 +123,7 @@ private:
 
 	static void
 	addWaitingEntry(uint8_t canId, Address address, bool isRead, const modm::can::Message& msg,
-					std::function<void(Value)>&& func);
+					std::function<void(const uint8_t, Value)>&& func);
 };
 
 namespace detail
