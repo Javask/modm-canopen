@@ -141,19 +141,19 @@ CanopenNode<OD, Protocols...>::setValueChanged(Address address)
 
 template<typename OD, typename... Protocols>
 auto
-CanopenNode<OD, Protocols...>::registerHandlers() -> CanopenNode<OD, Protocols...>::Map
+CanopenNode<OD, Protocols...>::registerHandlers(uint8_t id) -> CanopenNode<OD, Protocols...>::Map
 {
 	Map handlers;
-	(Protocols{}.registerHandlers(handlers), ...);
+	(Protocols{}.registerHandlers(id, handlers), ...);
 
 	return handlers;
 }
 
 template<typename OD, typename... Protocols>
 auto
-CanopenNode<OD, Protocols...>::constructHandlerMap() -> CanopenNode<OD, Protocols...>::Map
+CanopenNode<OD, Protocols...>::constructHandlerMap(uint8_t id) -> CanopenNode<OD, Protocols...>::Map
 {
-	Map handlers = registerHandlers();
+	Map handlers = registerHandlers(id);
 	return handlers;
 }
 

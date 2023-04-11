@@ -27,7 +27,7 @@ public:
 	using ReceivePdo_t = ReceivePdo<ObjectDictionary>;
 	using TransmitPdo_t = TransmitPdo<ObjectDictionary>;
 
-	CanopenNode(uint8_t nodeId) : nodeId_(nodeId){};
+	CanopenNode(uint8_t nodeId) : nodeId_(nodeId), accessHandlers(constructHandlerMap(nodeId)){};
 
 	void
 	setValueChanged(Address address);
@@ -43,11 +43,11 @@ private:
 	using Map = HandlerMapRT<ObjectDictionary>;
 
 	auto
-	registerHandlers() -> Map;
+	registerHandlers(uint8_t id) -> Map;
 	auto
-	constructHandlerMap() -> Map;
+	constructHandlerMap(uint8_t id) -> Map;
 
-	Map accessHandlers = constructHandlerMap();
+	Map accessHandlers;
 
 	std::array<ReceivePdo_t, MaxRPDOCount> receivePdos_;
 	std::array<TransmitPdo_t, MaxTPDOCount> transmitPdos_;
