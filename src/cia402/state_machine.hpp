@@ -67,7 +67,7 @@ public:
 
 	template<StatusBits bit>
 	inline bool
-	isSet()
+	isSet() const
 	{
 		return (status_ & ((uint16_t)bit)) == ((uint16_t)bit);
 	}
