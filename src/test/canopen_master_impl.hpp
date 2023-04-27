@@ -171,13 +171,13 @@ template<typename... Devices>
 uint32_t
 CanopenMaster<Devices...>::tpdoCanId(uint8_t nodeId, uint8_t index)
 {
-	return (0x100 * (index + 1) + 0x100) | nodeId;  // Reverse than in device
+	return (0x100 * (index + 1) + 0x100) + nodeId;  // Reverse than in device
 }
 template<typename... Devices>
 uint32_t
 CanopenMaster<Devices...>::rpdoCanId(uint8_t nodeId, uint8_t index)
 {
-	return (0x100 * (index + 1) + 0x80) | nodeId;  // Reverse than in device
+	return (0x100 * (index + 1) + 0x80) + nodeId;  // Reverse than in device
 }
 
 template<typename... Devices>

@@ -223,13 +223,13 @@ template<typename OD, typename... Protocols>
 uint32_t
 CanopenDevice<OD, Protocols...>::tpdoCanId(uint8_t index)
 {
-	return (0x100 * (index + 1) + 0x80) | nodeId_;
+	return (0x100 * (index + 1) + 0x80) + nodeId_;
 }
 template<typename OD, typename... Protocols>
 uint32_t
 CanopenDevice<OD, Protocols...>::rpdoCanId(uint8_t index)
 {
-	return (0x100 * (index + 1) + 0x100) | nodeId_;
+	return (0x100 * (index + 1) + 0x100) + nodeId_;
 }
 
 }  // namespace modm_canopen
