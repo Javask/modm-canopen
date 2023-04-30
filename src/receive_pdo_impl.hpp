@@ -18,7 +18,7 @@ ReceivePdo<OD>::processMessage(const modm::can::Message &message, Callback &&cb)
 		{
 			totalDataSize += PdoObject<OD>::mappings_[i].bitLength / 8;
 		}
-		if (totalDataSize > message.length) { return; }
+		if (totalDataSize > message.getLength()) { return; }
 		std::size_t index = 0;
 		for (uint_fast8_t i = 0; i < PdoObject<OD>::mappingCount_; ++i)
 		{
