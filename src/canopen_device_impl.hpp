@@ -109,6 +109,9 @@ CanopenDevice<OD, Protocols...>::processMessage(const modm::can::Message& messag
 	{
 		SdoServer<CanopenDevice>::processMessage(message, std::forward<MessageCallback>(cb));
 	}
+	(Protocols::template processMessage<CanopenDevice<OD, Protocols...>, MessageCallback>(
+		 message, std::forward<MessageCallback>(cb)),
+	 ...);
 }
 
 template<typename OD, typename... Protocols>
