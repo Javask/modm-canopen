@@ -15,6 +15,8 @@ operatingModeToString(OperatingMode mode)
 			return "Disabled";
 		case OperatingMode::Voltage:
 			return "Voltage";
+		case OperatingMode::Current:
+			return "Current";
 		case OperatingMode::Position:
 			return "Position";
 		case OperatingMode::Velocity:
