@@ -6,7 +6,7 @@
 
 namespace modm_canopen::generated
 {
-struct DefaultObjects
+struct {{ name }}
 {
     static constexpr auto map = ConstexprMapBuilder<Address, Entry, {{entry_count}}>{}
 %% for entry in entries

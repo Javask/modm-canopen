@@ -165,6 +165,28 @@ CanopenMaster<Devices...>::update(MessageCallback&& cb)
 				   pair.second);
 	}
 	SdoClient_t::update(cb);
+
+	if (heartBeatTimer_.execute()) { sendHeartbeat(std::forward<MessageCallback>(cb)); }
+}
+
+template<typename... Devices>
+template<typename MessageCallback>
+void
+CanopenMaster<Devices...>::sendHeartbeat(MessageCallback&& sendMessage)
+{
+	const uint8_t data = 0x5;
+	const modm::can::Message msg(0x700 + masterId_, 1, &data, false);
+	sendMessage(msg);
+}
+
+template<typename... Devices>
+template<typename MessageCallback>
+void
+CanopenMaster<Devices...>::setHeartbeatTimer(modm::Clock::duration duration,
+											 MessageCallback&& sendMessage)
+{
+	heartBeatTimer_ = modm::PeriodicTimer(duration);
+	sendHeartbeat(std::forward<MessageCallback>(sendMessage));
 }
 
 template<typename... Devices>
@@ -303,6 +325,7 @@ template<typename... Devices>
 template<typename OD, typename MessageCallback>
 void
 CanopenMaster<Devices...>::configureRemoteTPDO(uint8_t remoteId, uint8_t pdoId, ReceivePdo<OD> pdo,
+											   uint16_t inhibitTime_100us,
 											   MessageCallback&& sendMessage)
 {
 	pdo.setInactive();
@@ -310,6 +333,10 @@ CanopenMaster<Devices...>::configureRemoteTPDO(uint8_t remoteId, uint8_t pdoId, 
 	uint16_t tpdoCommParamAddr = 0x1800 + pdoId;
 	const auto tpdoCobId = Address{tpdoCommParamAddr, 1};
 	SdoClient_t::requestWrite(remoteId, tpdoCobId, (uint32_t)pdo.cobId(),
+							  std::forward<MessageCallback>(sendMessage));
+
+	const auto tpdoInhibitTime = Address{tpdoCommParamAddr, 3};
+	SdoClient_t::requestWrite(remoteId, tpdoInhibitTime, inhibitTime_100us,
 							  std::forward<MessageCallback>(sendMessage));
 
 	uint16_t tpdoMapParamAddr = 0x1A00 + pdoId;

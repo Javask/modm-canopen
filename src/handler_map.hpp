@@ -6,6 +6,7 @@
 #include "float_types.hpp"
 #include "sdo_error.hpp"
 #include "constexpr_map.hpp"
+#include "object_dictionary.hpp"
 #include "handlers.hpp"
 
 namespace modm_canopen

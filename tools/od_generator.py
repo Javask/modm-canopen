@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 from collections import namedtuple
 from enum import Enum, IntEnum
+import re
 
 class DataType(IntEnum):
     INTEGER8 = 0x0002
@@ -56,7 +57,9 @@ def generate_data_header(eds_filename):
     env.template = env.get_template("od_data.hpp.j2")
     eds = load_eds_file(eds_filename)
     entries = read_all_objects(eds)
-    return env.template.render({"entries" : entries, "entry_count" : len(entries)})
+    name = Path(eds_filename).stem
+    name = re.sub(r'[^\w]', '', name) +"_OD"
+    return env.template.render({"name": name ,"entries" : entries, "entry_count" : len(entries)})
 
 
 def key_to_address(key):

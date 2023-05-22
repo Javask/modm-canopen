@@ -1,5 +1,5 @@
 #pragma once
-#include "object_dictionary_common.hpp"
+#include "../object_dictionary_common.hpp"
 
 namespace modm_canopen
 {

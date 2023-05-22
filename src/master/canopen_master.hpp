@@ -7,13 +7,18 @@
 #include <tuple>
 #include <span>
 #include <mutex>
-#include "object_dictionary.hpp"
-#include "receive_pdo.hpp"
-#include "receive_pdo_configurator.hpp"
-#include "transmit_pdo_configurator.hpp"
-#include "transmit_pdo.hpp"
+
+#include <modm/processing/timer.hpp>
+
+#include "../object_dictionary.hpp"
+#include "../receive_pdo.hpp"
+#include "../receive_pdo_configurator.hpp"
+#include "../transmit_pdo_configurator.hpp"
+#include "../transmit_pdo.hpp"
 #include "sdo_client.hpp"
 #include "canopen_device_node.hpp"
+
+using namespace std::literals;
 
 namespace modm_canopen
 {
@@ -48,12 +53,21 @@ public:
 	static void
 	removeDevice(uint8_t id);
 
+	template<typename MessageCallback>
+	static void
+	setHeartbeatTimer(modm::Clock::duration duration, MessageCallback&& sendMessage);
+
 	static inline std::mutex masterMutex_{};
 
 private:
 	friend SdoClient_t;
-	static inline uint8_t nodeId_{};
+	static inline uint8_t masterId_{0};
 	static inline std::map<uint8_t, Device_t> devices_{};
+	static inline modm::PeriodicTimer heartBeatTimer_{100ms};
+
+	template<typename MessageCallback>
+	static void
+	sendHeartbeat(MessageCallback&& sendMessage);
 
 public:
 	// TODO: replace return value with std::expected like type, add error code to read handler
@@ -103,7 +117,7 @@ public:
 	template<typename OD, typename MessageCallback>
 	static void
 	configureRemoteTPDO(uint8_t remoteId, uint8_t pdoId, ReceivePdo<OD> pdo,
-						MessageCallback&& sendMessage);
+						uint16_t inhibitTime_100us, MessageCallback&& sendMessage);
 };
 
 }  // namespace modm_canopen

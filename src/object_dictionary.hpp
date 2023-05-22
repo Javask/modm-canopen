@@ -2,7 +2,7 @@
 #define CANOPEN_OBJECT_DICTIONARY_HPP
 
 #include "object_dictionary_common.hpp"
-#include "generated/object_dictionary.hpp"
+#include "constexpr_map.hpp"
 
 #include <algorithm>
 #include <cstdint>

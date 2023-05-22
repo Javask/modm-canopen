@@ -1,7 +1,7 @@
 #ifndef CANOPEN_SDO_CLIENT_HPP
 #define CANOPEN_SDO_CLIENT_HPP
 #include <modm/architecture/interface/can_message.hpp>
-#include "object_dictionary.hpp"
+#include "../object_dictionary.hpp"
 #include <future>
 #include <vector>
 #include <cstdint>

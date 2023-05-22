@@ -2,12 +2,12 @@ import subprocess
 from pathlib import Path
 
 def init(module):
-    module.name = "device:cia402"
+    module.name = "common:cia402"
     module.description = "Classes to implement the Cia402 Specification"
 
 
 def prepare(module, options):
-    module.depends("modm-canopen:device")
+    module.depends("modm-canopen:common")
     return True
 
 

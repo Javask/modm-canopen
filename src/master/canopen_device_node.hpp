@@ -3,12 +3,12 @@
 
 #include <array>
 #include <span>
-#include "object_dictionary.hpp"
+#include "../object_dictionary.hpp"
 #include "handler_map_rt.hpp"
-#include "receive_pdo.hpp"
-#include "receive_pdo_configurator.hpp"
-#include "transmit_pdo_configurator.hpp"
-#include "transmit_pdo.hpp"
+#include "../receive_pdo.hpp"
+#include "../receive_pdo_configurator.hpp"
+#include "../transmit_pdo_configurator.hpp"
+#include "../transmit_pdo.hpp"
 #include "inverse_object_dictionary.hpp"
 namespace modm_canopen
 {

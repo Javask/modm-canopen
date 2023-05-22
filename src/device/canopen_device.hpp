@@ -4,12 +4,12 @@
 #include <array>
 #include <span>
 #include <optional>
-#include "object_dictionary.hpp"
-#include "handler_map.hpp"
-#include "receive_pdo.hpp"
-#include "receive_pdo_configurator.hpp"
-#include "transmit_pdo_configurator.hpp"
-#include "transmit_pdo.hpp"
+#include "../handler_map.hpp"
+#include "../object_dictionary.hpp"
+#include "../receive_pdo.hpp"
+#include "../receive_pdo_configurator.hpp"
+#include "../transmit_pdo_configurator.hpp"
+#include "../transmit_pdo.hpp"
 #include "sdo_server.hpp"
 namespace modm_canopen
 {

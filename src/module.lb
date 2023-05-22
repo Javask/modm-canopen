@@ -2,8 +2,8 @@ import subprocess
 from pathlib import Path
 
 def init(module):
-    module.name = "device"
-    module.description = "canopen device"
+    module.name = "common"
+    module.description = "canopen common files"
 
 
 def prepare(module, options):
@@ -11,24 +11,25 @@ def prepare(module, options):
     module.depends("modm:architecture:clock")
     module.depends("modm:processing:timer")
     module.depends("modm:platform:core")
-    module.add_option(
-        PathOption(name="eds_file", absolute=True,
-                    description="EDS file to generate object dictionary data from"))
+    module.add_collector(
+        PathCollector(name="eds_files", absolute=True,
+                    description="EDS files to generate object dictionary data from"))
     return True
 
 
 def generate_object_dictionary(env):
-    eds_file = env.get("modm-canopen:device:eds_file")
     generator_path = Path(__file__).parents[1] / "tools" / "od_generator.py"
-    
     out_path = Path(env.outpath("generated"))
     out_path.mkdir(parents=True, exist_ok=True)
-    subprocess.check_call([generator_path, eds_file, out_path / "object_dictionary.hpp"])
+
+    for eds_file in env.collector_values("modm-canopen:common:eds_files"):
+      name = Path(eds_file).stem+"_od.hpp"
+      subprocess.check_call([generator_path, eds_file, out_path / name])
 
 
 def build(env):
     env.outbasepath = "modm-canopen/src/modm-canopen"
-    env.copy(".", ignore=env.ignore_files("cia402","test"))
+    env.copy(".", ignore=env.ignore_files("cia402","master","device"))
     env.collect("modm:build:path.include", "modm-canopen/src")
 
 def post_build(env):

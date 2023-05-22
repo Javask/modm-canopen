@@ -1,0 +1,13 @@
+
+def init(module):
+    module.name = "device"
+    module.description = "canopen device"
+
+
+def prepare(module, options):
+    module.depends("modm-canopen:common")
+    return True
+
+def build(env):
+    env.outbasepath = "modm-canopen/src/modm-canopen/device"
+    env.copy(".")

@@ -2,7 +2,6 @@
 #define CANOPEN_SDO_SERVER_HPP
 
 #include <modm/architecture/interface/can_message.hpp>
-#include "object_dictionary.hpp"
 
 namespace modm_canopen
 {

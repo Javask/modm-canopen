@@ -6,9 +6,9 @@
 #include <cassert>
 #include <functional>
 #include <map>
-#include "float_types.hpp"
-#include "sdo_error.hpp"
-#include "handlers.hpp"
+#include "../float_types.hpp"
+#include "../sdo_error.hpp"
+#include "../handlers.hpp"
 
 #include <modm/debug/logger.hpp>
 
