@@ -154,11 +154,17 @@ void
 CanopenDevice<OD, Protocols...>::setNodeId(uint8_t id)
 {
 	nodeId_ = id & 0x7f;
-	static_assert(transmitPdos_.size() == 4);
-	static_assert(receivePdos_.size() == 4);
+	static_assert(transmitPdos_.size() <= 64);
+	static_assert(receivePdos_.size() <= 64);
 	// TODO remove?
-	for (int i = 0; i < 4; ++i) { transmitPdos_[i].setCanId((0x100 * (i + 1) + 0x80) | nodeId_); }
-	for (int i = 0; i < 4; ++i) { receivePdos_[i].setCanId(0x100 * (i + 2) | nodeId_); }
+	for (size_t i = 0; i < transmitPdos_.size(); ++i)
+	{
+		transmitPdos_[i].setCanId((0x100 * (i + 1) + 0x80) | nodeId_);
+	}
+	for (size_t i = 0; i < receivePdos_.size(); ++i)
+	{
+		receivePdos_[i].setCanId(0x100 * (i + 2) | nodeId_);
+	}
 	SdoServer<CanopenDevice>::setNodeId(id);
 }
 
