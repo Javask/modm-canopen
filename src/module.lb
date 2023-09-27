@@ -1,5 +1,6 @@
 import subprocess
 from pathlib import Path
+import sys
 
 def init(module):
     module.name = "common"
@@ -24,7 +25,7 @@ def generate_object_dictionary(env):
 
     for eds_file in env.collector_values("modm-canopen:common:eds_files"):
       name = Path(eds_file).stem+"_od.hpp"
-      subprocess.check_call([generator_path, eds_file, out_path / name])
+      subprocess.check_call([sys.executable, generator_path, eds_file, out_path / name])
 
 
 def build(env):
