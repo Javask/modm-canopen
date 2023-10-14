@@ -20,8 +20,8 @@ private:
 	uint8_t nodeId_{};
 
 public:
-	static constexpr uint8_t MaxTPDOCount = 5;
-	static constexpr uint8_t MaxRPDOCount = 5;
+	static constexpr uint8_t MaxTPDOCount = 4;
+	static constexpr uint8_t MaxRPDOCount = 4;
 
 	using ObjectDictionary = inverse<OD>;  // Invert Read/Write to make sense in the master
 	using ReceivePdo_t = ReceivePdo<ObjectDictionary>;
