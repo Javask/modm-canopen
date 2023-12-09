@@ -18,21 +18,21 @@ class SdoClient
 {
 public:
 	template<typename MessageCallback>
-	static void
+	static std::future<SdoErrorCode>
 	requestRead(uint8_t canId, Address address, MessageCallback&& sendMessage);
 
 	template<typename MessageCallback>
-	static void
+	static std::future<SdoErrorCode>
 	requestRead(uint8_t canId, Address address,
 				std::function<void(const uint8_t, Value)>&& valueCallback,
 				MessageCallback&& sendMessage);
 
 	template<typename MessageCallback>
-	static void
+	static std::future<SdoErrorCode>
 	requestWrite(uint8_t canId, Address address, MessageCallback&& sendMessage);
 
 	template<typename MessageCallback>
-	static void
+	static std::future<SdoErrorCode>
 	requestWrite(uint8_t canId, Address address, const Value& value, MessageCallback&& sendMessage);
 
 	template<typename MessageCallback>
@@ -59,6 +59,7 @@ private:
 		modm::Clock::time_point sent;
 		modm::can::Message msg;
 		std::function<void(const uint8_t, Value)> callback;
+		std::promise<SdoErrorCode> promise;
 
 		inline WaitingEntry()
 		{
@@ -68,29 +69,8 @@ private:
 			sent = {};
 			msg = {};
 			callback = {};
+			promise = {};
 		}
-
-		inline WaitingEntry&
-		operator=(const WaitingEntry& other)
-		{
-			canId = other.canId;
-			address = other.address;
-			isRead = other.isRead;
-			sent = other.sent;
-			msg = other.msg;
-			callback = other.callback;
-			return *this;
-		}
-
-		inline WaitingEntry(const WaitingEntry& other)
-		{
-			canId = other.canId;
-			address = other.address;
-			isRead = other.isRead;
-			sent = other.sent;
-			msg = other.msg;
-			callback = other.callback;
-		};
 
 		inline WaitingEntry&
 		operator=(WaitingEntry&& other)
@@ -101,6 +81,7 @@ private:
 			sent = std::move(other.sent);
 			msg = std::move(other.msg);
 			callback = std::move(other.callback);
+			promise = std::move(other.promise);
 			return *this;
 		};
 
@@ -112,6 +93,7 @@ private:
 			sent = std::move(other.sent);
 			msg = std::move(other.msg);
 			callback = std::move(other.callback);
+			promise = std::move(other.promise);
 		};
 	};
 
@@ -119,10 +101,12 @@ private:
 	static std::vector<WaitingEntry> waitingOn_;
 
 	static void
-	addWaitingEntry(uint8_t canId, Address address, bool isRead, const modm::can::Message& msg);
+	addWaitingEntry(uint8_t canId, Address address, bool isRead, const modm::can::Message& msg,
+					std::promise<SdoErrorCode>&& promise);
 
 	static void
 	addWaitingEntry(uint8_t canId, Address address, bool isRead, const modm::can::Message& msg,
+					std::promise<SdoErrorCode>&& promise,
 					std::function<void(const uint8_t, Value)>&& func);
 };
 

@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include "object_dictionary_common.hpp"
+#include <modm/debug/logger.hpp>
 
 namespace modm_canopen
 {
@@ -20,11 +21,15 @@ public:
 		map.template setReadHandler<Address{0x1800 + pdo, 0}>(+[]() -> uint8_t { return 5; });
 
 		// RPDO COB-ID
-		map.template setReadHandler<Address{0x1800 + pdo, 1}>(
-			+[]() -> uint32_t { return tpdo.cobId(); });
+		map.template setReadHandler<Address{0x1800 + pdo, 1}>(+[]() -> uint32_t {
+			MODM_LOG_DEBUG << "tpdo " << pdo << " 0x" << modm::hex << tpdo.cobId() << modm::endl;
+			return tpdo.cobId();
+		});
 
-		map.template setWriteHandler<Address{0x1800 + pdo, 1}>(
-			+[](uint32_t cobId) { return setTransmitPdoCobId(pdo, cobId); });
+		map.template setWriteHandler<Address{0x1800 + pdo, 1}>(+[](uint32_t cobId) {
+			MODM_LOG_DEBUG << "set tpdo " << pdo << " 0x" << modm::hex << cobId << modm::endl;
+			return setTransmitPdoCobId(pdo, cobId);
+		});
 
 		map.template setReadHandler<Address{0x1800 + pdo, 2}>(
 			// 0xFF: async
@@ -106,19 +111,7 @@ private:
 	setTransmitPdoCobId(uint_fast8_t index, uint32_t cobId)
 	{
 		auto& tpdo = Device::transmitPdos_[index];
-		const uint32_t canId = 0x80 + 0x100 * (1 + index) + Device::nodeId();
-		const uint32_t canIdMask = (1u << 30) - 1;
-		// changing can id is not supported
-		if ((cobId & canIdMask) != canId) { return SdoErrorCode::InvalidValue; }
-		const bool enabled = !(cobId & (1u << 31));
-		if (enabled)
-		{
-			return tpdo.setActive();
-		} else
-		{
-			tpdo.setInactive();
-			return SdoErrorCode::NoError;
-		}
+		return tpdo.setCOBId(cobId);
 	}
 };
 

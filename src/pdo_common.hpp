@@ -41,6 +41,8 @@ protected:
 public:
 	void
 	setCanId(uint32_t canId);
+	SdoErrorCode
+	setCOBId(uint32_t cobId);
 
 	SdoErrorCode
 	setActive();

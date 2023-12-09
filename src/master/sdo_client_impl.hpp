@@ -74,6 +74,7 @@ SdoClient<Device>::processMessage(const modm::can::Message& request,
 										  std::span<const uint8_t>{&request.data[4], 4}, size);
 				}
 				std::forward<MessageCallback>(responseCallback)(it->canId, address, error);
+				it->promise.set_value(error);
 				waitingOn_.erase(it);
 				return;
 			}
@@ -81,6 +82,7 @@ SdoClient<Device>::processMessage(const modm::can::Message& request,
 			{
 				std::forward<MessageCallback>(responseCallback)(it->canId, address,
 																SdoErrorCode::NoError);
+				it->promise.set_value(SdoErrorCode::NoError);
 				waitingOn_.erase(it);
 				return;
 			}
@@ -89,6 +91,7 @@ SdoClient<Device>::processMessage(const modm::can::Message& request,
 				static_assert(sizeof(SdoErrorCode) == 4);
 				SdoErrorCode err = *((SdoErrorCode*)&request.data[4]);
 				std::forward<MessageCallback>(responseCallback)(it->canId, address, err);
+				it->promise.set_value(SdoErrorCode::NoError);
 				waitingOn_.erase(it);
 				return;
 			}
@@ -98,59 +101,75 @@ SdoClient<Device>::processMessage(const modm::can::Message& request,
 
 template<typename Device>
 template<typename MessageCallback>
-void
+std::future<SdoErrorCode>
 SdoClient<Device>::requestRead(uint8_t canId, Address address, MessageCallback&& sendMessage)
 {
+
+	std::promise<SdoErrorCode> promise;
+	auto future = promise.get_future();
 	modm::can::Message msg;
 	detail::uploadMessage(canId, address, msg);
-	addWaitingEntry(canId, address, true, msg);
+	addWaitingEntry(canId, address, true, msg, std::move(promise));
 	sendMessage(msg);
+	return future;
 }
 
 template<typename Device>
 template<typename MessageCallback>
-void
+std::future<SdoErrorCode>
 SdoClient<Device>::requestRead(uint8_t canId, Address address,
 							   std::function<void(const uint8_t, Value)>&& valueCallback,
 							   MessageCallback&& sendMessage)
 {
+
+	std::promise<SdoErrorCode> promise;
+	auto future = promise.get_future();
 	modm::can::Message msg;
 	detail::uploadMessage(canId, address, msg);
-	addWaitingEntry(canId, address, true, msg, std::move(valueCallback));
+	addWaitingEntry(canId, address, true, msg, std::move(promise), std::move(valueCallback));
 	sendMessage(msg);
+	return future;
 }
 
 template<typename Device>
 template<typename MessageCallback>
-void
+std::future<SdoErrorCode>
 SdoClient<Device>::requestWrite(uint8_t canId, Address address, MessageCallback&& sendMessage)
 {
 	auto value = Device::read(canId, address);
 	if (std::get_if<Value>(value))
 	{
+		std::promise<SdoErrorCode> promise;
+		auto future = promise.get_future();
 		modm::can::Message msg;
 		detail::downloadMessage(canId, address, std::get<Value>(value), msg);
-		addWaitingEntry(canId, address, false, msg);
+		addWaitingEntry(canId, address, false, msg, std::move(promise));
 		sendMessage(msg);
+		return future;
 	}
+	return {};
 }
 
 template<typename Device>
 template<typename MessageCallback>
-void
+std::future<SdoErrorCode>
 SdoClient<Device>::requestWrite(uint8_t canId, Address address, const Value& value,
 								MessageCallback&& sendMessage)
 {
+	std::promise<SdoErrorCode> promise;
+	auto future = promise.get_future();
 	modm::can::Message msg;
 	detail::downloadMessage(canId, address, value, msg);
-	addWaitingEntry(canId, address, false, msg);
+	addWaitingEntry(canId, address, false, msg, std::move(promise));
 	sendMessage(msg);
+	return future;
 }
 
 template<typename Device>
 void
 SdoClient<Device>::addWaitingEntry(uint8_t canId, Address address, bool isRead,
-								   const modm::can::Message& msg)
+								   const modm::can::Message& msg,
+								   std::promise<SdoErrorCode>&& promise)
 {
 	WaitingEntry entry{};
 	entry.canId = canId;
@@ -159,13 +178,15 @@ SdoClient<Device>::addWaitingEntry(uint8_t canId, Address address, bool isRead,
 	entry.sent = modm::Clock::now();
 	entry.msg = msg;
 	entry.callback = {};
-	waitingOn_.push_back(entry);
+	entry.promise = std::move(promise);
+	waitingOn_.push_back(std::move(entry));
 }
 
 template<typename Device>
 void
 SdoClient<Device>::addWaitingEntry(uint8_t canId, Address address, bool isRead,
 								   const modm::can::Message& msg,
+								   std::promise<SdoErrorCode>&& promise,
 								   std::function<void(const uint8_t, Value)>&& func)
 {
 	WaitingEntry entry{};
@@ -175,7 +196,8 @@ SdoClient<Device>::addWaitingEntry(uint8_t canId, Address address, bool isRead,
 	entry.sent = modm::Clock::now();
 	entry.msg = msg;
 	entry.callback = std::move(func);
-	waitingOn_.push_back(entry);
+	entry.promise = std::move(promise);
+	waitingOn_.push_back(std::move(entry));
 }
 
 template<typename Device>

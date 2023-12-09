@@ -94,19 +94,7 @@ private:
 	setReceivePdoCobId(uint_fast8_t index, uint32_t cobId)
 	{
 		auto& rpdo = Device::receivePdos_[index];
-		const uint32_t canId = 0x100 * (2 + index) + Device::nodeId();
-		const uint32_t canIdMask = (1u << 30) - 1;
-		// changing can id is not supported
-		if ((cobId & canIdMask) != canId) { return SdoErrorCode::InvalidValue; }
-		const bool enabled = !(cobId & (1u << 31));
-		if (enabled)
-		{
-			return rpdo.setActive();
-		} else
-		{
-			rpdo.setInactive();
-			return SdoErrorCode::NoError;
-		}
+		return rpdo.setCOBId(cobId);
 	}
 };
 

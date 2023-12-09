@@ -6,6 +6,27 @@ namespace modm_canopen
 {
 
 template<typename OD, typename... Protocols>
+void
+CanopenDevice<OD, Protocols...>::initialize(uint8_t nodeId)
+{
+	setNodeId(nodeId);
+	static_assert(transmitPdos_.size() <= 64);
+	static_assert(receivePdos_.size() <= 64);
+	// Configure the default ones
+	for (size_t i = 0; i < std::min(transmitPdos_.size(), 4u); ++i)
+	{
+		transmitPdos_[i].setCanId(tpdoCanId(i) | nodeId_);
+	}
+	for (size_t i = 0; i < std::min(receivePdos_.size(), 4u); ++i)
+	{
+		receivePdos_[i].setCanId(rpdoCanId(i) | nodeId_);
+	}
+	// Disable all manufacturer defined ones
+	for (size_t i = 4; i < transmitPdos_.size(); ++i) { transmitPdos_[i].setInactive(); }
+	for (size_t i = 4; i < receivePdos_.size(); ++i) { receivePdos_[i].setInactive(); }
+}
+
+template<typename OD, typename... Protocols>
 auto
 CanopenDevice<OD, Protocols...>::write(Address address, Value value) -> SdoErrorCode
 {
@@ -156,14 +177,13 @@ CanopenDevice<OD, Protocols...>::setNodeId(uint8_t id)
 	nodeId_ = id & 0x7f;
 	static_assert(transmitPdos_.size() <= 64);
 	static_assert(receivePdos_.size() <= 64);
-	// TODO remove?
 	for (size_t i = 0; i < transmitPdos_.size(); ++i)
 	{
-		transmitPdos_[i].setCanId((0x100 * (i + 1) + 0x80) | nodeId_);
+		transmitPdos_[i].setCanId((transmitPdos_[i].canId() & 0xFFFF'FF80) | nodeId_);
 	}
 	for (size_t i = 0; i < receivePdos_.size(); ++i)
 	{
-		receivePdos_[i].setCanId(0x100 * (i + 2) | nodeId_);
+		receivePdos_[i].setCanId((receivePdos_[i].canId() & 0xFFFF'FF80) | nodeId_);
 	}
 	SdoServer<CanopenDevice>::setNodeId(id);
 }
@@ -216,16 +236,18 @@ template<typename OD, typename... Protocols>
 void
 CanopenDevice<OD, Protocols...>::setReceivePdo(uint8_t index, ReceivePdo_t rpdo)
 {
+	auto canId = receivePdos_[index].canId();
 	receivePdos_[index] = rpdo;
-	receivePdos_[index].setCanId(rpdoCanId(index));
+	receivePdos_[index].setCanId(canId);
 }
 
 template<typename OD, typename... Protocols>
 void
 CanopenDevice<OD, Protocols...>::setTransmitPdo(uint8_t index, TransmitPdo_t tpdo)
 {
+	auto canId = transmitPdos_[index].canId();
 	transmitPdos_[index] = tpdo;
-	transmitPdos_[index].setCanId(tpdoCanId(index));
+	transmitPdos_[index].setCanId(canId);
 }
 
 template<typename OD, typename... Protocols>

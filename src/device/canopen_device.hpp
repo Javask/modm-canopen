@@ -18,19 +18,15 @@ template<typename OD, typename... Protocols>
 class CanopenDevice
 {
 public:
-	static constexpr uint8_t MaxTPDOCount = 4;
-	static constexpr uint8_t MaxRPDOCount = 4;
+	static constexpr uint8_t MaxTPDOCount = 8;
+	static constexpr uint8_t MaxRPDOCount = 8;
 
 	using ObjectDictionary = OD;
 	using ReceivePdo_t = ReceivePdo<OD>;
 	using TransmitPdo_t = TransmitPdo<OD>;
 
 	static void
-	initialize(uint8_t nodeId)
-	{
-		setNodeId(nodeId);
-	}
-
+	initialize(uint8_t nodeId);
 	static void
 	setNodeId(uint8_t id);
 	static uint8_t

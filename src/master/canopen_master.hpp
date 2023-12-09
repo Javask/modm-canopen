@@ -28,7 +28,7 @@ class CanopenMaster
 {
 public:
 	using SdoClient_t = SdoClient<CanopenMaster<Devices...>>;
-	using Device_t = std::variant<std::monostate, Devices...>;
+	using Device_t = std::variant<std::monostate, std::unique_ptr<Devices>...>;
 
 	static void
 	setValueChanged(Address address);
@@ -42,9 +42,9 @@ public:
 	static void
 	update(MessageCallback&& cb);
 
-	template<typename Device>
+	template<typename Device, typename MessageCallback>
 	static Device&
-	addDevice(uint8_t id);
+	addDevice(uint8_t id, MessageCallback&& sendMessage);
 
 	template<typename Device>
 	static Device&
