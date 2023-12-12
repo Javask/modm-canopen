@@ -2,6 +2,9 @@
 #include <cstdint>
 #include <type_traits>
 #include <limits>
+#include <cmath>
+
+#include <modm/debug/logger.hpp>
 namespace modm_canopen
 {
 namespace cia402
@@ -18,12 +21,14 @@ struct ScalingFactor
 	inline Integer
 	toInternal(Integer user) const
 	{
-		static_assert(std::is_integral<Integer>::value);
-		typedef typename std::conditional<std::is_signed<Integer>::value, int32_t, uint32_t>::type
-			Internal;
-		Internal result = (Internal)user * numerator / divisor;
+		static_assert(std::is_integral_v<Integer>);
+		typedef typename std::conditional_t<std::is_signed_v<Integer>, int32_t, uint32_t> Internal;
 
-		if constexpr (std::is_signed<Integer>::value)
+		Internal result = static_cast<Internal>(
+			std::round(static_cast<float>(user) * static_cast<float>(numerator) /
+					   static_cast<float>(divisor)));
+
+		if constexpr (std::is_signed_v<Integer>)
 		{
 			if (polarityInverted) result = -result;
 		}
@@ -43,14 +48,17 @@ struct ScalingFactor
 	inline Integer
 	toUser(Integer internal) const
 	{
-		static_assert(std::is_integral<Integer>::value);
-		typedef typename std::conditional<std::is_signed<Integer>::value, int32_t, uint32_t>::type
-			Internal;
-		Internal result = (Internal)internal * divisor / numerator;
-		if constexpr (std::is_signed<Integer>::value)
+		static_assert(std::is_integral_v<Integer>);
+		typedef typename std::conditional_t<std::is_signed_v<Integer>, int32_t, uint32_t> Internal;
+		Internal result = static_cast<Internal>(
+			std::round(static_cast<float>(internal) * static_cast<float>(divisor) /
+					   static_cast<float>(numerator)));
+
+		if constexpr (std::is_signed_v<Integer>)
 		{
 			if (polarityInverted) result = -result;
 		}
+
 		if (result > std::numeric_limits<Integer>::max())
 		{
 			return std::numeric_limits<Integer>::max();
