@@ -211,10 +211,13 @@ CanopenMaster<Devices...>::setRPDO(uint8_t sourceId, uint8_t pdoId, ReceivePdo<O
 	pdo.setCanId(canId);
 	if (devices_.count(sourceId))
 	{
-		std::visit(
-			overloaded{[](std::monostate) {},
-					   [sourceId, pdoId, &pdo](auto&& arg) { arg.setReceivePdo(pdoId, pdo); }},
-			devices_[sourceId]);
+		std::visit(overloaded{[](std::monostate) {},
+							  [sourceId, pdoId, &pdo](auto&& arg) {
+								  using T = std::decay_t<decltype(arg)>;
+								  if constexpr (std::is_same_v<typename T::ObjectDictionary, OD>)
+									  arg.setReceivePdo(pdoId, pdo);
+							  }},
+				   devices_[sourceId]);
 	}
 }
 template<typename... Devices>
@@ -226,10 +229,13 @@ CanopenMaster<Devices...>::setTPDO(uint8_t destinationId, uint8_t pdoId, Transmi
 	pdo.setCanId(canId);
 	if (devices_.contains(destinationId))
 	{
-		std::visit(
-			overloaded{[](std::monostate) {}, [destinationId, pdoId, &pdo](
-												  auto&& arg) { arg.setTransmitPdo(pdoId, pdo); }},
-			devices_[destinationId]);
+		std::visit(overloaded{[](std::monostate) {},
+							  [destinationId, pdoId, &pdo](auto&& arg) {
+								  using T = std::decay_t<decltype(arg)>;
+								  if constexpr(std::is_same_v<typename T::ObjectDictionary, OD>)
+									  arg.setTransmitPdo(pdoId, pdo);
+							  }},
+				   devices_[destinationId]);
 	}
 }
 
