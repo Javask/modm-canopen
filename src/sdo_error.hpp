@@ -20,6 +20,8 @@ enum class SdoErrorCode : uint32_t
     // TODO: add error codes
 };
 
+const char* sdoErrorToString(SdoErrorCode code);
+
 }
 
 #endif
