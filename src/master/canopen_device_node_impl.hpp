@@ -121,6 +121,13 @@ CanopenNode<OD, Protocols...>::update(MessageCallback&& cb)
 
 template<typename OD, typename... Protocols>
 void
+CanopenNode<OD, Protocols...>::updateHandlers(Map map)
+{
+	accessHandlers = map;
+}
+
+template<typename OD, typename... Protocols>
+void
 CanopenNode<OD, Protocols...>::setValueChanged(Address address)
 {
 	for (auto& tpdo : transmitPdos_)

@@ -24,10 +24,16 @@ public:
 	static constexpr uint8_t MaxRPDOCount = 4;
 
 	using ObjectDictionary = inverse<OD>;  // Invert Read/Write to make sense in the master
+	using Map = HandlerMapRT<ObjectDictionary>;
 	using ReceivePdo_t = ReceivePdo<ObjectDictionary>;
 	using TransmitPdo_t = TransmitPdo<ObjectDictionary>;
 
-	CanopenNode(uint8_t nodeId) : nodeId_(nodeId), accessHandlers(constructHandlerMap(nodeId)){};
+	CanopenNode(uint8_t nodeId, Map map) : nodeId_(nodeId), accessHandlers(map){};
+
+	CanopenNode(uint8_t nodeId) : CanopenNode(nodeId, constructHandlerMap(nodeId)){};
+
+	void
+	updateHandlers(Map map);
 
 	void
 	setValueChanged(Address address);
@@ -40,8 +46,6 @@ public:
 	update(MessageCallback&& cb);
 
 private:
-	using Map = HandlerMapRT<ObjectDictionary>;
-
 	auto
 	registerHandlers(uint8_t id) -> Map;
 	auto

@@ -48,6 +48,10 @@ public:
 
 	template<typename Device>
 	static Device&
+	addDevice(uint8_t id, Device::Map map);
+
+	template<typename Device>
+	static Device&
 	getDevice(uint8_t id);
 
 	static void

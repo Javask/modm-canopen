@@ -30,6 +30,15 @@ CanopenMaster<Devices...>::addDevice(uint8_t id)
 template<typename... Devices>
 template<typename Device>
 Device&
+CanopenMaster<Devices...>::addDevice(uint8_t id, Device::Map map)
+{
+	devices_.emplace(id, Device(id, map));
+	return std::get<Device>(devices_.at(id));
+}
+
+template<typename... Devices>
+template<typename Device>
+Device&
 CanopenMaster<Devices...>::getDevice(uint8_t id)
 {
 	return std::get<Device>(devices_.at(id));
