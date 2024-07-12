@@ -78,7 +78,9 @@ CanopenNode<OD, Protocols...>::read(Address address) -> std::variant<Value, SdoE
 	auto handler = accessHandlers.lookupReadHandler(address);
 	if (handler)
 	{
-		return callReadHandler(*handler);
+		auto ret = callReadHandler(*handler);
+		if (!ret) return SdoErrorCode::GeneralError;
+		return *ret;
 	} else
 	{
 		auto entry = OD::map.lookup(address);

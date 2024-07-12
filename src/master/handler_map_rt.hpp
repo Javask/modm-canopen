@@ -4,18 +4,20 @@
 #include <cstdint>
 #include <variant>
 #include <cassert>
+#include <optional>
 #include <functional>
 #include <map>
 #include "../float_types.hpp"
 #include "../sdo_error.hpp"
 #include "../handlers.hpp"
+#include "../object_dictionary_common.hpp"
 
 #include <modm/debug/logger.hpp>
 
 namespace modm_canopen
 {
 template<typename T>
-using ReadFunctionRT = std::function<T()>;
+using ReadFunctionRT = std::function<std::optional<T>()>;
 
 template<typename T>
 using WriteFunctionRT = std::function<SdoErrorCode(T)>;
@@ -83,9 +85,9 @@ public:
 		return writeHandlers.at(address);
 	}
 
-	template<Address address, typename ReturnT>
+	template<typename ReturnT>
 	void
-	setReadHandler(std::function<ReturnT()> func)
+	setReadHandler(Address address, std::function<std::optional<ReturnT>()> func)
 	{
 		ReadHandlerRT handler = func;
 		auto entry = OD::map.lookup(address);
@@ -104,7 +106,7 @@ public:
 			abort();
 		}
 
-		auto handlerIndex = ReadHandlerRT(std::function<ReturnT()>()).index();
+		auto handlerIndex = ReadHandlerRT(std::function<std::optional<ReturnT>()>()).index();
 		auto odIndex = static_cast<std::size_t>(entry->dataType);
 		if (odIndex != handlerIndex)
 		{
@@ -116,9 +118,9 @@ public:
 		readHandlers[address] = handler;
 	}
 
-	template<Address address, typename Param>
+	template<typename Param>
 	void
-	setWriteHandler(std::function<SdoErrorCode(Param)> func)
+	setWriteHandler(Address address, std::function<SdoErrorCode(Param)> func)
 	{
 		WriteHandlerRT handler = func;
 		auto entry = OD::map.lookup(address);
@@ -149,7 +151,7 @@ public:
 	}
 };
 
-inline Value
+inline std::optional<Value>
 callReadHandler(ReadHandlerRT h)
 {
 	static_assert(Value(std::monostate{}).index() == size_t(DataType::Empty));
@@ -158,26 +160,71 @@ callReadHandler(ReadHandlerRT h)
 	{
 		case DataType::Empty:
 			return Value{};
-		case DataType::UInt8:
-			return Value(std::get<ReadFunctionRT<uint8_t>>(h)());
-		case DataType::UInt16:
-			return Value(std::get<ReadFunctionRT<uint16_t>>(h)());
-		case DataType::UInt32:
-			return Value(std::get<ReadFunctionRT<uint32_t>>(h)());
-		case DataType::UInt64:
-			return Value(std::get<ReadFunctionRT<uint64_t>>(h)());
-		case DataType::Int8:
-			return Value(std::get<ReadFunctionRT<int8_t>>(h)());
-		case DataType::Int16:
-			return Value(std::get<ReadFunctionRT<int16_t>>(h)());
-		case DataType::Int32:
-			return Value(std::get<ReadFunctionRT<int32_t>>(h)());
-		case DataType::Int64:
-			return Value(std::get<ReadFunctionRT<int64_t>>(h)());
-		case DataType::Real32:
-			return Value(std::get<ReadFunctionRT<float32_t>>(h)());
+		case DataType::UInt8: {
+			auto val = std::get<ReadFunctionRT<uint8_t>>(h)();
+			if (val.has_value())
+				return Value(*val);
+			else
+				return {};
+		}
+		case DataType::UInt16: {
+			auto val = std::get<ReadFunctionRT<uint16_t>>(h)();
+			if (val.has_value())
+				return Value(*val);
+			else
+				return {};
+		}
+		case DataType::UInt32: {
+			auto val = std::get<ReadFunctionRT<uint32_t>>(h)();
+			if (val.has_value())
+				return Value(*val);
+			else
+				return {};
+		}
+		case DataType::UInt64: {
+			auto val = std::get<ReadFunctionRT<uint64_t>>(h)();
+			if (val.has_value())
+				return Value(*val);
+			else
+				return {};
+		}
+		case DataType::Int8: {
+			auto val = std::get<ReadFunctionRT<int8_t>>(h)();
+			if (val.has_value())
+				return Value(*val);
+			else
+				return {};
+		}
+		case DataType::Int16: {
+			auto val = std::get<ReadFunctionRT<int16_t>>(h)();
+			if (val.has_value())
+				return Value(*val);
+			else
+				return {};
+		}
+		case DataType::Int32: {
+			auto val = std::get<ReadFunctionRT<int32_t>>(h)();
+			if (val.has_value())
+				return Value(*val);
+			else
+				return {};
+		}
+		case DataType::Int64: {
+			auto val = std::get<ReadFunctionRT<int64_t>>(h)();
+			if (val.has_value())
+				return Value(*val);
+			else
+				return {};
+		}
+		case DataType::Real32: {
+			auto val = std::get<ReadFunctionRT<float32_t>>(h)();
+			if (val.has_value())
+				return Value(*val);
+			else
+				return {};
+		}
 	}
-	return Value{};
+	return {};
 }
 
 inline SdoErrorCode
