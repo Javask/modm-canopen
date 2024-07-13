@@ -2,6 +2,8 @@
 #define MODM_CANOPEN_OBJECT_DICTIONARY_COMMON_HPP
 
 #include <cstdint>
+#include <variant>
+#include "float_types.hpp"
 
 namespace modm_canopen
 {
@@ -36,6 +38,9 @@ enum class AccessType : uint8_t
 	ReadWriteReadPdo,
 	ReadWriteWritePdo
 };
+
+using Value = std::variant<std::monostate, uint8_t, uint16_t, uint32_t, uint64_t, int8_t, int16_t,
+						   int32_t, int64_t, float32_t>;
 
 struct Entry
 {

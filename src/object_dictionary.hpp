@@ -10,16 +10,11 @@
 #include <numeric>
 #include <optional>
 #include <utility>
-#include <variant>
 
-#include "float_types.hpp"
 #include "sdo_error.hpp"
 
 namespace modm_canopen
 {
-
-using Value = std::variant<std::monostate, uint8_t, uint16_t, uint32_t, uint64_t, int8_t, int16_t,
-						   int32_t, int64_t, float32_t>;
 
 template<typename Map>
 constexpr std::size_t

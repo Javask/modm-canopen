@@ -1,5 +1,6 @@
 #pragma once
 #include "../object_dictionary_common.hpp"
+#include "../constexpr_map.hpp"
 
 namespace modm_canopen
 {

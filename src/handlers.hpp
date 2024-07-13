@@ -1,8 +1,5 @@
 #pragma once
-#include <cstdint>
-#include <variant>
-#include "float_types.hpp"
-#include "sdo_error.hpp"
+#include "object_dictionary_common.hpp"
 
 namespace modm_canopen
 {
@@ -23,6 +20,5 @@ struct missing_write_handler
 };
 
 }  // namespace detail
-
 
 }  // namespace modm_canopen
