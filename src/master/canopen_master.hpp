@@ -5,6 +5,7 @@
 #include <map>
 #include <variant>
 #include <tuple>
+#include <optional>
 #include <span>
 #include <mutex>
 
@@ -53,6 +54,10 @@ public:
 	template<typename Device>
 	static Device&
 	getDevice(uint8_t id);
+
+	template<typename Device>
+	static Device*
+	tryGetDevice(uint8_t id);
 
 	static void
 	removeDevice(uint8_t id);

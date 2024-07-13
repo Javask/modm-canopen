@@ -45,6 +45,15 @@ CanopenMaster<Devices...>::getDevice(uint8_t id)
 }
 
 template<typename... Devices>
+template<typename Device>
+Device*
+CanopenMaster<Devices...>::tryGetDevice(uint8_t id)
+{
+	if (!std::holds_alternative<Device>(devices_.at(id))) return nullptr;
+	return &std::get<Device>(devices_.at(id));
+}
+
+template<typename... Devices>
 void
 CanopenMaster<Devices...>::setValueChanged(Address address)
 {
@@ -241,7 +250,7 @@ CanopenMaster<Devices...>::setTPDO(uint8_t destinationId, uint8_t pdoId, Transmi
 		std::visit(overloaded{[](std::monostate) {},
 							  [destinationId, pdoId, &pdo](auto&& arg) {
 								  using T = std::decay_t<decltype(arg)>;
-								  if constexpr(std::is_same_v<typename T::ObjectDictionary, OD>)
+								  if constexpr (std::is_same_v<typename T::ObjectDictionary, OD>)
 									  arg.setTransmitPdo(pdoId, pdo);
 							  }},
 				   devices_[destinationId]);
