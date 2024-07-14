@@ -32,7 +32,10 @@ public:
 	using Device_t = std::variant<std::monostate, Devices...>;
 
 	static void
-	setValueChanged(Address address);
+	setValueChangedAll(Address address);
+
+	static bool
+	setValueChanged(uint8_t canID, Address address);
 
 	/// call on message reception
 	template<typename MessageCallback>

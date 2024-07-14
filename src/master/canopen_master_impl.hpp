@@ -55,7 +55,7 @@ CanopenMaster<Devices...>::tryGetDevice(uint8_t id)
 
 template<typename... Devices>
 void
-CanopenMaster<Devices...>::setValueChanged(Address address)
+CanopenMaster<Devices...>::setValueChangedAll(Address address)
 {
 	for (auto& device : devices_)
 	{
@@ -63,6 +63,27 @@ CanopenMaster<Devices...>::setValueChanged(Address address)
 							  [&address](auto&& device) { device.setValueChanged(address); }},
 				   device.second);
 	}
+}
+
+template<typename... Devices>
+bool
+CanopenMaster<Devices...>::setValueChanged(uint8_t canID, Address address)
+{
+	for (auto& device : devices_)
+	{
+		auto ret = std::visit(overloaded{[](std::monostate) {},
+										 [canID, &address](auto&& device) {
+											 if (device.nodeId() == canID)
+											 {
+												 device.setValueChanged(address);
+												 return true;
+											 }
+											 return false;
+										 }},
+							  device.second);
+		if (ret) return true;
+	}
+	return false;
 }
 
 template<typename... Devices>
