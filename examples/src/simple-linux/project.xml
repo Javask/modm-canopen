@@ -1,6 +1,6 @@
 <library>
   <repositories>
-    <repository><path>../../ext/modm/repo.lb</path></repository>
+    <repository><path>../../../../modm/repo.lb</path></repository>
     <repository><path>../../../repo.lb</path></repository>
   </repositories>
   <options>

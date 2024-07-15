@@ -1,3 +1,0 @@
-[submodule "examples/ext/modm"]
-	path = examples/ext/modm
-	url = https://github.com/modm-io/modm
