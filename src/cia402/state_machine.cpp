@@ -1,6 +1,4 @@
 #include "state_machine.hpp"
-#include <modm/debug/logger.hpp>
-
 namespace modm_canopen
 {
 namespace cia402
@@ -37,7 +35,6 @@ StateMachine::update(const CommandWord& cmd)
 		{
 			status_ = s.apply(status_);
 			state_ = s.state;
-			MODM_LOG_DEBUG << "Updated State to " << stateToString(state_) << modm::endl;
 			return true;
 		}
 	}
@@ -55,7 +52,6 @@ StateMachine::set(uint16_t value)
 			status_ = value;
 			if (state_ == s.state) return true;
 			state_ = s.state;
-			MODM_LOG_DEBUG << "Updated State to " << stateToString(state_) << modm::endl;
 			return true;
 		}
 	}
