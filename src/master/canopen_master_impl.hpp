@@ -49,6 +49,7 @@ template<typename Device>
 Device*
 CanopenMaster<Devices...>::tryGetDevice(uint8_t id)
 {
+	if (!devices_.contains(id)) return nullptr;
 	if (!std::holds_alternative<Device>(devices_.at(id))) return nullptr;
 	return &std::get<Device>(devices_.at(id));
 }
@@ -71,7 +72,7 @@ CanopenMaster<Devices...>::setValueChanged(uint8_t canID, Address address)
 {
 	for (auto& device : devices_)
 	{
-		auto ret = std::visit(overloaded{[](std::monostate) {},
+		auto ret = std::visit(overloaded{[](std::monostate) { return false; },
 										 [canID, &address](auto&& device) {
 											 if (device.nodeId() == canID)
 											 {
@@ -172,7 +173,7 @@ CanopenMaster<Devices...>::read(uint8_t id, Address address) -> std::variant<Val
 					}
 					return std::optional<std::variant<Value, SdoErrorCode>>{};
 				}},
-			device);
+			device.second);
 		if (temp.has_value()) return *temp;
 	}
 	return SdoErrorCode::GeneralError;

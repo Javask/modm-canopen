@@ -122,17 +122,19 @@ SdoClient<Device>::requestRead(uint8_t canId, Address address,
 
 template<typename Device>
 template<typename MessageCallback>
-void
+bool
 SdoClient<Device>::requestWrite(uint8_t canId, Address address, MessageCallback&& sendMessage)
 {
 	auto value = Device::read(canId, address);
-	if (std::get_if<Value>(value))
+	if (std::holds_alternative<Value>(value))
 	{
 		modm::can::Message msg;
 		detail::downloadMessage(canId, address, std::get<Value>(value), msg);
 		addWaitingEntry(canId, address, false, msg);
 		sendMessage(msg);
+		return true;
 	}
+	return false;
 }
 
 template<typename Device>

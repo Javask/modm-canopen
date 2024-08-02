@@ -28,7 +28,7 @@ public:
 				MessageCallback&& sendMessage);
 
 	template<typename MessageCallback>
-	static void
+	static bool
 	requestWrite(uint8_t canId, Address address, MessageCallback&& sendMessage);
 
 	template<typename MessageCallback>

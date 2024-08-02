@@ -24,6 +24,7 @@ public:
 	static constexpr uint8_t MaxRPDOCount = 4;
 
 	using ObjectDictionary = inverse<OD>;  // Invert Read/Write to make sense in the master
+	using MasterSideOD = OD;
 	using Map = HandlerMapRT<ObjectDictionary>;
 	using ReceivePdo_t = ReceivePdo<ObjectDictionary>;
 	using TransmitPdo_t = TransmitPdo<ObjectDictionary>;
