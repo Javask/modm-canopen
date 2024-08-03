@@ -4,7 +4,7 @@
 #include <array>
 #include <span>
 #include <optional>
-#include "../handler_map.hpp"
+#include "handler_map.hpp"
 #include "../object_dictionary.hpp"
 #include "../receive_pdo.hpp"
 #include "../receive_pdo_configurator.hpp"

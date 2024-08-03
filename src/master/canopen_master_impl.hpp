@@ -1,15 +1,10 @@
 #ifndef CANOPEN_CANOPEN_MASTER_HPP
 #error "Do not include this file directly, include canopen_master.hpp instead!"
 #endif
+#include "overloaded.hpp"
 
 namespace modm_canopen
 {
-
-template<class... Ts>
-struct overloaded : Ts...
-{
-	using Ts::operator()...;
-};  // i hate this
 
 template<typename... Devices>
 void
