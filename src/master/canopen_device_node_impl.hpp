@@ -171,6 +171,7 @@ void
 CanopenNode<OD, Protocols...>::setReceivePdoActive(uint8_t index, bool active)
 {
 	receivePdos_[index].setActive(active);
+	updateRPDOAddrs();
 }
 
 template<typename OD, typename... Protocols>
@@ -178,6 +179,7 @@ void
 CanopenNode<OD, Protocols...>::setTransmitPdoActive(uint8_t index, bool active)
 {
 	transmitPdos_[index].setActive(active);
+	updateTPDOAddrs();
 }
 
 template<typename OD, typename... Protocols>
@@ -185,6 +187,7 @@ void
 CanopenNode<OD, Protocols...>::setReceivePdo(uint8_t index, ReceivePdo_t rpdo)
 {
 	receivePdos_[index] = rpdo;
+	updateRPDOAddrs();
 }
 
 template<typename OD, typename... Protocols>
@@ -192,6 +195,75 @@ void
 CanopenNode<OD, Protocols...>::setTransmitPdo(uint8_t index, TransmitPdo_t tpdo)
 {
 	transmitPdos_[index] = tpdo;
+	updateTPDOAddrs();
+}
+
+template<typename OD, typename... Protocols>
+std::vector<modm_canopen::Address>
+CanopenNode<OD, Protocols...>::getActiveTPDOAddrs()
+{
+	return tpdoAddrs_;
+}
+
+template<typename OD, typename... Protocols>
+std::vector<modm_canopen::Address>
+CanopenNode<OD, Protocols...>::getActiveRPDOAddrs()
+{
+	return rpdoAddrs_;
+}
+
+template<typename OD, typename... Protocols>
+void
+CanopenNode<OD, Protocols...>::updateTPDOAddrs()
+{
+	tpdoAddrs_ = std::vector<modm_canopen::Address>();
+	for (auto& pdo : transmitPdos_)
+	{
+		if (pdo.isActive())
+		{
+			for (size_t i = 0; i < pdo.mappingCount(); i++)
+			{
+				auto mapping = pdo.mapping(i);
+				bool found = false;
+				for (auto& addr : tpdoAddrs_)
+				{
+					if (mapping.address.index == addr.index &&
+						mapping.address.subindex == addr.subindex)
+					{
+						found = true;
+					}
+				}
+				if (!found) tpdoAddrs_.push_back(mapping.address);
+			}
+		}
+	}
+}
+
+template<typename OD, typename... Protocols>
+void
+CanopenNode<OD, Protocols...>::updateRPDOAddrs()
+{
+	rpdoAddrs_ = std::vector<modm_canopen::Address>();
+	for (auto& pdo : receivePdos_)
+	{
+		if (pdo.isActive())
+		{
+			for (size_t i = 0; i < pdo.mappingCount(); i++)
+			{
+				auto mapping = pdo.mapping(i);
+				bool found = false;
+				for (auto& addr : rpdoAddrs_)
+				{
+					if (mapping.address.index == addr.index &&
+						mapping.address.subindex == addr.subindex)
+					{
+						found = true;
+					}
+				}
+				if (!found) rpdoAddrs_.push_back(mapping.address);
+			}
+		}
+	}
 }
 
 }  // namespace modm_canopen

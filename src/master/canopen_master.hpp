@@ -65,6 +65,12 @@ public:
 	static void
 	removeDevice(uint8_t id);
 
+	static std::vector<modm_canopen::Address>
+	getActiveTPDOAddrs(uint8_t id);
+
+	static std::vector<modm_canopen::Address>
+	getActiveRPDOAddrs(uint8_t id);
+
 	template<typename MessageCallback>
 	static void
 	setHeartbeatTimer(modm::Clock::duration duration, MessageCallback&& sendMessage);

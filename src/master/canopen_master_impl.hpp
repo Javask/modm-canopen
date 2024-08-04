@@ -395,4 +395,26 @@ CanopenMaster<Devices...>::configureRemoteTPDO(uint8_t remoteId, uint8_t pdoId, 
 	setRemoteTPDOActive(remoteId, pdoId, true, std::forward<MessageCallback>(sendMessage));
 }
 
+template<typename... Devices>
+std::vector<modm_canopen::Address>
+CanopenMaster<Devices...>::getActiveTPDOAddrs(uint8_t id)
+{
+	if (!devices_.contains(id)) return {};
+	return std::visit(
+		overloaded{[](std::monostate) { return std::vector<modm_canopen::Address>(); },
+				   [](auto&& arg) { return arg.getActiveTPDOAddrs(); }},
+		devices_[id]);
+}
+
+template<typename... Devices>
+std::vector<modm_canopen::Address>
+CanopenMaster<Devices...>::getActiveRPDOAddrs(uint8_t id)
+{
+	if (!devices_.contains(id)) return {};
+	return std::visit(
+		overloaded{[](std::monostate) { return std::vector<modm_canopen::Address>(); },
+				   [](auto&& arg) { return arg.getActiveRPDOAddrs(); }},
+		devices_[id]);
+}
+
 }  // namespace modm_canopen

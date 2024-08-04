@@ -2,6 +2,7 @@
 #define CANOPEN_CANOPEN_DEVICE_NODE_HPP
 
 #include <array>
+#include <vector>
 #include <span>
 #include "../object_dictionary.hpp"
 #include "handler_map_rt.hpp"
@@ -46,6 +47,11 @@ public:
 	void
 	update(MessageCallback&& cb);
 
+	std::vector<modm_canopen::Address>
+	getActiveTPDOAddrs();
+	std::vector<modm_canopen::Address>
+	getActiveRPDOAddrs();
+
 private:
 	auto
 	registerHandlers(uint8_t id) -> Map;
@@ -53,6 +59,12 @@ private:
 	constructHandlerMap(uint8_t id) -> Map;
 
 	Map accessHandlers;
+
+	void
+	updateRPDOAddrs();
+	void
+	updateTPDOAddrs();
+	std::vector<modm_canopen::Address> rpdoAddrs_{}, tpdoAddrs_{};
 
 	std::array<ReceivePdo_t, MaxRPDOCount> receivePdos_;
 	std::array<TransmitPdo_t, MaxTPDOCount> transmitPdos_;
