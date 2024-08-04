@@ -2,6 +2,7 @@
 #define CANOPEN_PDO_COMMON_HPP
 
 #include "sdo_error.hpp"
+#include "object_dictionary_common.hpp"
 
 namespace modm_canopen
 {
@@ -39,6 +40,8 @@ protected:
 	std::array<DataType, MaxMappingCount> mappingTypes_{};
 
 public:
+	using ObjectDictionary = OD;
+
 	void
 	setCanId(uint32_t canId);
 
