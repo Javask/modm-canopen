@@ -11,6 +11,22 @@ StateMachine::StateMachine(State initial) : status_{0}, state_{initial}
 	}
 }
 
+StateMachine::StateMachine(uint16_t raw)
+{
+	state_ = parseState(raw);
+	status_ = raw;
+}
+
+State
+StateMachine::parseState(uint16_t val)
+{
+	for (auto& s : StateInfos)
+	{
+		if (s.matches(val)) { return s.state; }
+	}
+	return State::Invalid;
+}
+
 bool
 StateMachine::update(const CommandWord& cmd)
 {

@@ -45,7 +45,11 @@ private:
 	State state_;
 
 public:
+	static State
+	parseState(uint16_t val);
+
 	explicit StateMachine(State initial);
+	explicit StateMachine(uint16_t raw);
 
 	bool
 	update(const CommandWord& cmdWord);
