@@ -167,19 +167,35 @@ CanopenNode<OD, Protocols...>::constructHandlerMap(uint8_t id) -> CanopenNode<OD
 }
 
 template<typename OD, typename... Protocols>
-void
+SdoErrorCode
 CanopenNode<OD, Protocols...>::setReceivePdoActive(uint8_t index, bool active)
 {
-	receivePdos_[index].setActive(active);
+	SdoErrorCode ret = SdoErrorCode::NoError;
+	if (active)
+	{
+		ret = receivePdos_[index].setActive();
+	} else
+	{
+		receivePdos_[index].setInactive();
+	}
 	updateRPDOAddrs();
+	return ret;
 }
 
 template<typename OD, typename... Protocols>
-void
+SdoErrorCode
 CanopenNode<OD, Protocols...>::setTransmitPdoActive(uint8_t index, bool active)
 {
-	transmitPdos_[index].setActive(active);
+	SdoErrorCode ret = SdoErrorCode::NoError;
+	if (active)
+	{
+		ret = transmitPdos_[index].setActive();
+	} else
+	{
+		transmitPdos_[index].setInactive();
+	}
 	updateTPDOAddrs();
+	return ret;
 }
 
 template<typename OD, typename... Protocols>

@@ -93,9 +93,9 @@ public:
 	std::optional<Value>
 	toValue(Address address, std::span<const uint8_t> data, int8_t size = -1);
 
-	void
+	SdoErrorCode
 	setReceivePdoActive(uint8_t index, bool active);
-	void
+	SdoErrorCode
 	setTransmitPdoActive(uint8_t index, bool active);
 	void
 	setReceivePdo(uint8_t index, ReceivePdo_t rpdo);

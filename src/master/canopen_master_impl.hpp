@@ -282,7 +282,7 @@ CanopenMaster<Devices...>::setRPDOActive(uint8_t sourceId, uint8_t pdoId, bool a
 	{
 		return std::visit(overloaded{[](std::monostate) { return SdoErrorCode::PdoMappingError; },
 									 [sourceId, pdoId, active](auto&& arg) {
-										 return arg.setRPDOActive(sourceId, pdoId, active);
+										 return arg.setReceivePdoActive(pdoId, active);
 									 }},
 						  devices_[sourceId]);
 	}
@@ -296,7 +296,7 @@ CanopenMaster<Devices...>::setTPDOActive(uint8_t destinationId, uint8_t pdoId, b
 	{
 		return std::visit(overloaded{[](std::monostate) { return SdoErrorCode::PdoMappingError; },
 									 [destinationId, pdoId, active](auto&& arg) {
-										 return arg.setTPDOActive(destinationId, pdoId, active);
+										 return arg.setTransmitPdoActive(pdoId, active);
 									 }},
 						  devices_[destinationId]);
 	}
