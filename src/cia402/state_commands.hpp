@@ -98,5 +98,7 @@ enum class StateCommandNames : uint8_t
 	QuickStop = 6,
 };
 
+const char*
+stateCommandNameToString(StateCommandNames name);
 }  // namespace cia402
 }  // namespace modm_canopen
