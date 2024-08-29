@@ -4,6 +4,7 @@
 #include <array>
 #include <vector>
 #include <span>
+#include <mutex>
 #include "../object_dictionary.hpp"
 #include "handler_map_rt.hpp"
 #include "../receive_pdo.hpp"
@@ -58,7 +59,13 @@ private:
 	auto
 	constructHandlerMap(uint8_t id) -> Map;
 
+	std::optional<ReadHandlerRT>
+	getReadHandler(Address addr);
+	std::optional<WriteHandlerRT>
+	getWriteHandler(Address addr);
+
 	Map accessHandlers;
+	std::mutex handlerMutex_{};
 
 	void
 	updateRPDOAddrs();
@@ -66,6 +73,7 @@ private:
 	updateTPDOAddrs();
 	std::vector<modm_canopen::Address> rpdoAddrs_{}, tpdoAddrs_{};
 
+	std::recursive_mutex pdoMutex_{};
 	std::array<ReceivePdo_t, MaxRPDOCount> receivePdos_;
 	std::array<TransmitPdo_t, MaxTPDOCount> transmitPdos_;
 

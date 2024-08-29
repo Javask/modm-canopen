@@ -15,6 +15,7 @@ SdoClient<Device>::update(MessageCallback&& sendMessage)
 {
 	constexpr modm::Clock::duration timeout{100ms};
 	auto now = modm::Clock::now();
+	std::unique_lock lock(waitingOnMutex_);
 	for (auto& wait : waitingOn_)
 	{
 		auto timesince = now - wait.sent;
@@ -161,6 +162,7 @@ SdoClient<Device>::addWaitingEntry(uint8_t canId, Address address, bool isRead,
 	entry.sent = modm::Clock::now();
 	entry.msg = msg;
 	entry.callback = {};
+	std::unique_lock lock(waitingOnMutex_);
 	waitingOn_.push_back(entry);
 }
 
@@ -177,6 +179,7 @@ SdoClient<Device>::addWaitingEntry(uint8_t canId, Address address, bool isRead,
 	entry.sent = modm::Clock::now();
 	entry.msg = msg;
 	entry.callback = std::move(func);
+	std::unique_lock lock(waitingOnMutex_);
 	waitingOn_.push_back(entry);
 }
 

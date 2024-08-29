@@ -16,7 +16,7 @@ CanopenNode<OD, Protocols...>::write(Address address, Value value) -> SdoErrorCo
 		return SdoErrorCode::UnsupportedAccess;
 	}
 
-	auto handler = accessHandlers.lookupWriteHandler(address);
+	auto handler = getWriteHandler(address);
 	if (handler)
 	{
 		const auto result = callWriteHandler(*handler, value);
@@ -29,6 +29,22 @@ CanopenNode<OD, Protocols...>::write(Address address, Value value) -> SdoErrorCo
 	{  // TODO: can this happen?
 		return SdoErrorCode::UnsupportedAccess;
 	}
+}
+
+template<typename OD, typename... Protocols>
+std::optional<ReadHandlerRT>
+CanopenNode<OD, Protocols...>::getReadHandler(Address addr)
+{
+	std::unique_lock lock(handlerMutex_);
+	return accessHandlers.lookupReadHandler(addr);
+}
+
+template<typename OD, typename... Protocols>
+std::optional<WriteHandlerRT>
+CanopenNode<OD, Protocols...>::getWriteHandler(Address addr)
+{
+	std::unique_lock lock(handlerMutex_);
+	return accessHandlers.lookupWriteHandler(addr);
 }
 
 template<typename OD, typename... Protocols>
@@ -47,8 +63,8 @@ CanopenNode<OD, Protocols...>::toValue(Address address, std::span<const uint8_t>
 
 template<typename OD, typename... Protocols>
 auto
-CanopenNode<OD, Protocols...>::write(Address address, std::span<const uint8_t> data, int8_t size)
-	-> SdoErrorCode
+CanopenNode<OD, Protocols...>::write(Address address, std::span<const uint8_t> data,
+									 int8_t size) -> SdoErrorCode
 {
 	auto entry = ObjectDictionary::map.lookup(address);
 	if (!entry) { return SdoErrorCode::ObjectDoesNotExist; }
@@ -59,7 +75,7 @@ CanopenNode<OD, Protocols...>::write(Address address, std::span<const uint8_t> d
 		(objectSize <= data.size()) && ((size == -1) || (size == int8_t(objectSize)));
 	if (!sizeIsValid) { return SdoErrorCode::UnsupportedAccess; }
 
-	auto handler = accessHandlers.lookupWriteHandler(address);
+	auto handler = getWriteHandler(address);
 	if (handler)
 	{
 		const Value value = valueFromBytes(entry->dataType, data.data());
@@ -75,7 +91,7 @@ template<typename OD, typename... Protocols>
 auto
 CanopenNode<OD, Protocols...>::read(Address address) -> std::variant<Value, SdoErrorCode>
 {
-	auto handler = accessHandlers.lookupReadHandler(address);
+	auto handler = getReadHandler(address);
 	if (handler)
 	{
 		auto ret = callReadHandler(*handler);
@@ -99,6 +115,7 @@ template<typename OD, typename... Protocols>
 void
 CanopenNode<OD, Protocols...>::processMessage(const modm::can::Message& message)
 {
+	std::unique_lock lock(pdoMutex_);
 	for (auto& rpdo : receivePdos_)
 	{
 		rpdo.processMessage(message,
@@ -111,6 +128,7 @@ template<typename MessageCallback>
 void
 CanopenNode<OD, Protocols...>::update(MessageCallback&& cb)
 {
+	std::unique_lock lock(pdoMutex_);
 	for (auto& tpdo : transmitPdos_)
 	{
 		if (tpdo.isActive())
@@ -125,6 +143,7 @@ template<typename OD, typename... Protocols>
 void
 CanopenNode<OD, Protocols...>::updateHandlers(Map map)
 {
+	std::unique_lock lock(handlerMutex_);
 	accessHandlers = map;
 }
 
@@ -132,6 +151,7 @@ template<typename OD, typename... Protocols>
 void
 CanopenNode<OD, Protocols...>::setValueChanged(Address address)
 {
+	std::unique_lock lock(pdoMutex_);
 	for (auto& tpdo : transmitPdos_)
 	{
 		if (tpdo.isActive())
@@ -170,6 +190,7 @@ template<typename OD, typename... Protocols>
 SdoErrorCode
 CanopenNode<OD, Protocols...>::setReceivePdoActive(uint8_t index, bool active)
 {
+	std::unique_lock lock(pdoMutex_);
 	SdoErrorCode ret = SdoErrorCode::NoError;
 	if (active)
 	{
@@ -186,6 +207,7 @@ template<typename OD, typename... Protocols>
 SdoErrorCode
 CanopenNode<OD, Protocols...>::setTransmitPdoActive(uint8_t index, bool active)
 {
+	std::unique_lock lock(pdoMutex_);
 	SdoErrorCode ret = SdoErrorCode::NoError;
 	if (active)
 	{
@@ -202,6 +224,7 @@ template<typename OD, typename... Protocols>
 void
 CanopenNode<OD, Protocols...>::setReceivePdo(uint8_t index, ReceivePdo_t rpdo)
 {
+	std::unique_lock lock(pdoMutex_);
 	receivePdos_[index] = rpdo;
 	updateRPDOAddrs();
 }
@@ -210,6 +233,7 @@ template<typename OD, typename... Protocols>
 void
 CanopenNode<OD, Protocols...>::setTransmitPdo(uint8_t index, TransmitPdo_t tpdo)
 {
+	std::unique_lock lock(pdoMutex_);
 	transmitPdos_[index] = tpdo;
 	updateTPDOAddrs();
 }
@@ -218,6 +242,7 @@ template<typename OD, typename... Protocols>
 std::vector<modm_canopen::Address>
 CanopenNode<OD, Protocols...>::getActiveTPDOAddrs()
 {
+	std::unique_lock lock(pdoMutex_);
 	return tpdoAddrs_;
 }
 
@@ -225,6 +250,7 @@ template<typename OD, typename... Protocols>
 std::vector<modm_canopen::Address>
 CanopenNode<OD, Protocols...>::getActiveRPDOAddrs()
 {
+	std::unique_lock lock(pdoMutex_);
 	return rpdoAddrs_;
 }
 

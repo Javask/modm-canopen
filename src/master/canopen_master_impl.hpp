@@ -10,53 +10,59 @@ template<typename... Devices>
 void
 CanopenMaster<Devices...>::removeDevice(uint8_t id)
 {
+	std::unique_lock lock(devicesMutex_);
 	devices_.erase(id);
 }
 
 template<typename... Devices>
 template<typename Device>
-Device&
+Device &
 CanopenMaster<Devices...>::addDevice(uint8_t id)
 {
-	devices_.emplace(id, Device(id));
-	return std::get<Device>(devices_.at(id));
+	std::unique_lock lock(devicesMutex_);
+	devices_.emplace(id, std::move(DevicePtr_t<Device>(new Device(id))));
+	return *std::get<DevicePtr_t<Device>>(devices_.at(id));
 }
 
 template<typename... Devices>
 template<typename Device>
-Device&
+Device &
 CanopenMaster<Devices...>::addDevice(uint8_t id, Device::Map map)
 {
-	devices_.emplace(id, Device(id, map));
-	return std::get<Device>(devices_.at(id));
+	std::unique_lock lock(devicesMutex_);
+	devices_.emplace(id, std::move(DevicePtr_t<Device>(new Device(id, map))));
+	return *std::get<DevicePtr_t<Device>>(devices_.at(id));
 }
 
 template<typename... Devices>
 template<typename Device>
-Device&
+Device &
 CanopenMaster<Devices...>::getDevice(uint8_t id)
 {
-	return std::get<Device>(devices_.at(id));
+	std::unique_lock lock(devicesMutex_);
+	return *std::get<DevicePtr_t<Device>>(devices_.at(id));
 }
 
 template<typename... Devices>
 template<typename Device>
-Device*
+Device *
 CanopenMaster<Devices...>::tryGetDevice(uint8_t id)
 {
+	std::unique_lock lock(devicesMutex_);
 	if (!devices_.contains(id)) return nullptr;
-	if (!std::holds_alternative<Device>(devices_.at(id))) return nullptr;
-	return &std::get<Device>(devices_.at(id));
+	if (!std::holds_alternative<DevicePtr_t<Device>>(devices_.at(id))) return nullptr;
+	return std::get<DevicePtr_t<Device>>(devices_.at(id)).get();
 }
 
 template<typename... Devices>
 void
 CanopenMaster<Devices...>::setValueChangedAll(Address address)
 {
-	for (auto& device : devices_)
+	std::unique_lock lock(devicesMutex_);
+	for (auto &device : devices_)
 	{
 		std::visit(overloaded{[](std::monostate) {},
-							  [&address](auto&& device) { device.setValueChanged(address); }},
+							  [&address](auto &&device) { device->setValueChanged(address); }},
 				   device.second);
 	}
 }
@@ -65,13 +71,14 @@ template<typename... Devices>
 bool
 CanopenMaster<Devices...>::setValueChanged(uint8_t canID, Address address)
 {
-	for (auto& device : devices_)
+	std::unique_lock lock(devicesMutex_);
+	for (auto &device : devices_)
 	{
 		auto ret = std::visit(overloaded{[](std::monostate) { return false; },
-										 [canID, &address](auto&& device) {
-											 if (device.nodeId() == canID)
+										 [canID, &address](auto &&device) {
+											 if (device->nodeId() == canID)
 											 {
-												 device.setValueChanged(address);
+												 device->setValueChanged(address);
 												 return true;
 											 }
 											 return false;
@@ -86,15 +93,16 @@ template<typename... Devices>
 auto
 CanopenMaster<Devices...>::write(uint8_t id, Address address, Value value) -> SdoErrorCode
 {
-	for (auto& device : devices_)
+	std::unique_lock lock(devicesMutex_);
+	for (auto &device : devices_)
 	{
 
 		auto temp = std::visit(
 			overloaded{[](std::monostate) { return std::optional<SdoErrorCode>{}; },
-					   [id, address, value](auto&& device) {
-						   if (device.nodeId() == id)
+					   [id, address, value](auto &&device) {
+						   if (device->nodeId() == id)
 						   {
-							   return std::optional<SdoErrorCode>{device.write(address, value)};
+							   return std::optional<SdoErrorCode>{device->write(address, value)};
 						   }
 						   return std::optional<SdoErrorCode>{};
 					   }},
@@ -109,16 +117,16 @@ auto
 CanopenMaster<Devices...>::write(uint8_t id, Address address, std::span<const uint8_t> data,
 								 int8_t size) -> SdoErrorCode
 {
-	for (auto& device : devices_)
+	std::unique_lock lock(devicesMutex_);
+	for (auto &device : devices_)
 	{
-
 		auto temp =
 			std::visit(overloaded{[](std::monostate) { return std::optional<SdoErrorCode>{}; },
-								  [id, address, data, size](auto&& device) {
-									  if (device.nodeId() == id)
+								  [id, address, data, size](auto &&device) {
+									  if (device->nodeId() == id)
 									  {
 										  return std::optional<SdoErrorCode>{
-											  device.write(address, data, size)};
+											  device->write(address, data, size)};
 									  }
 									  return std::optional<SdoErrorCode>{};
 								  }},
@@ -133,14 +141,15 @@ std::optional<Value>
 CanopenMaster<Devices...>::toValue(uint8_t id, Address address, std::span<const uint8_t> data,
 								   int8_t size)
 {
-	for (auto& device : devices_)
+	std::unique_lock lock(devicesMutex_);
+	for (auto &device : devices_)
 	{
 
 		auto temp = std::visit(overloaded{[](std::monostate) { return std::optional<Value>{}; },
-										  [id, address, data, size](auto&& device) {
-											  if (device.nodeId() == id)
+										  [id, address, data, size](auto &&device) {
+											  if (device->nodeId() == id)
 											  {
-												  return device.toValue(address, data, size);
+												  return device->toValue(address, data, size);
 											  }
 											  return std::optional<Value>{};
 										  }},
@@ -154,17 +163,18 @@ template<typename... Devices>
 auto
 CanopenMaster<Devices...>::read(uint8_t id, Address address) -> std::variant<Value, SdoErrorCode>
 {
-	for (auto& device : devices_)
+	std::unique_lock lock(devicesMutex_);
+	for (auto &device : devices_)
 	{
 
 		auto temp = std::visit(
 			overloaded{
 				[](std::monostate) { return std::optional<std::variant<Value, SdoErrorCode>>{}; },
-				[id, address](auto&& device) {
-					if (device.nodeId() == id)
+				[id, address](auto &&device) {
+					if (device->nodeId() == id)
 					{
 						return std::optional<std::variant<Value, SdoErrorCode>>{
-							device.read(address)};
+							device->read(address)};
 					}
 					return std::optional<std::variant<Value, SdoErrorCode>>{};
 				}},
@@ -177,13 +187,16 @@ CanopenMaster<Devices...>::read(uint8_t id, Address address) -> std::variant<Val
 template<typename... Devices>
 template<typename MessageCallback>
 void
-CanopenMaster<Devices...>::processMessage(const modm::can::Message& message, MessageCallback&& cb)
+CanopenMaster<Devices...>::processMessage(const modm::can::Message &message, MessageCallback &&cb)
 {
-	for (auto& pair : devices_)
 	{
-		std::visit(overloaded{[](std::monostate) {},
-							  [&message](auto&& arg) { arg.processMessage(message); }},
-				   pair.second);
+		std::unique_lock lock(devicesMutex_);
+		for (auto &pair : devices_)
+		{
+			std::visit(overloaded{[](std::monostate) {},
+								  [&message](auto &&arg) { arg->processMessage(message); }},
+					   pair.second);
+		}
 	}
 	SdoClient_t::processMessage(message, std::forward<MessageCallback>(cb));
 }
@@ -191,23 +204,28 @@ CanopenMaster<Devices...>::processMessage(const modm::can::Message& message, Mes
 template<typename... Devices>
 template<typename MessageCallback>
 void
-CanopenMaster<Devices...>::update(MessageCallback&& cb)
+CanopenMaster<Devices...>::update(MessageCallback &&cb)
 {
-	for (auto& pair : devices_)
 	{
-		std::visit(overloaded{[](std::monostate) {},
-							  [&cb](auto&& arg) { arg.update(std::forward<MessageCallback>(cb)); }},
-				   pair.second);
+		std::unique_lock lock(devicesMutex_);
+		for (auto &pair : devices_)
+		{
+			std::visit(
+				overloaded{[](std::monostate) {},
+						   [&cb](auto &&arg) { arg->update(std::forward<MessageCallback>(cb)); }},
+				pair.second);
+		}
 	}
 	SdoClient_t::update(cb);
 
+	std::unique_lock lock(heartbeatTimerMutex_);
 	if (heartBeatTimer_.execute()) { sendHeartbeat(std::forward<MessageCallback>(cb)); }
 }
 
 template<typename... Devices>
 template<typename MessageCallback>
 void
-CanopenMaster<Devices...>::sendHeartbeat(MessageCallback&& sendMessage)
+CanopenMaster<Devices...>::sendHeartbeat(MessageCallback &&sendMessage)
 {
 	const uint8_t data = 0x5;
 	const modm::can::Message msg(0x700 + masterId_, 1, &data, false);
@@ -218,8 +236,10 @@ template<typename... Devices>
 template<typename MessageCallback>
 void
 CanopenMaster<Devices...>::setHeartbeatTimer(modm::Clock::duration duration,
-											 MessageCallback&& sendMessage)
+											 MessageCallback &&sendMessage)
 {
+
+	std::unique_lock lock(heartbeatTimerMutex_);
 	heartBeatTimer_ = modm::PeriodicTimer(duration);
 	sendHeartbeat(std::forward<MessageCallback>(sendMessage));
 }
@@ -240,17 +260,19 @@ CanopenMaster<Devices...>::rpdoCanId(uint8_t nodeId, uint8_t index)
 template<typename... Devices>
 template<typename OD>
 void
-CanopenMaster<Devices...>::setRPDO(uint8_t sourceId, uint8_t pdoId, ReceivePdo<OD>& pdo)
+CanopenMaster<Devices...>::setRPDO(uint8_t sourceId, uint8_t pdoId, ReceivePdo<OD> &pdo)
 {
 	auto canId = rpdoCanId(sourceId, pdoId);
 	pdo.setCanId(canId);
+
+	std::unique_lock lock(devicesMutex_);
 	if (devices_.count(sourceId))
 	{
 		std::visit(overloaded{[](std::monostate) {},
-							  [sourceId, pdoId, &pdo](auto&& arg) {
-								  using T = std::decay_t<decltype(arg)>;
+							  [sourceId, pdoId, &pdo](auto &&arg) {
+								  using T = std::remove_reference<decltype(*arg)>::type;
 								  if constexpr (std::is_same_v<typename T::ObjectDictionary, OD>)
-									  arg.setReceivePdo(pdoId, pdo);
+									  arg->setReceivePdo(pdoId, pdo);
 							  }},
 				   devices_[sourceId]);
 	}
@@ -258,17 +280,19 @@ CanopenMaster<Devices...>::setRPDO(uint8_t sourceId, uint8_t pdoId, ReceivePdo<O
 template<typename... Devices>
 template<typename OD>
 void
-CanopenMaster<Devices...>::setTPDO(uint8_t destinationId, uint8_t pdoId, TransmitPdo<OD>& pdo)
+CanopenMaster<Devices...>::setTPDO(uint8_t destinationId, uint8_t pdoId, TransmitPdo<OD> &pdo)
 {
 	auto canId = tpdoCanId(destinationId, pdoId);
 	pdo.setCanId(canId);
+
+	std::unique_lock lock(devicesMutex_);
 	if (devices_.contains(destinationId))
 	{
 		std::visit(overloaded{[](std::monostate) {},
-							  [destinationId, pdoId, &pdo](auto&& arg) {
-								  using T = std::decay_t<decltype(arg)>;
+							  [destinationId, pdoId, &pdo](auto &&arg) {
+								  using T = std::remove_reference<decltype(*arg)>::type;
 								  if constexpr (std::is_same_v<typename T::ObjectDictionary, OD>)
-									  arg.setTransmitPdo(pdoId, pdo);
+									  arg->setTransmitPdo(pdoId, pdo);
 							  }},
 				   devices_[destinationId]);
 	}
@@ -278,11 +302,13 @@ template<typename... Devices>
 SdoErrorCode
 CanopenMaster<Devices...>::setRPDOActive(uint8_t sourceId, uint8_t pdoId, bool active)
 {
+
+	std::unique_lock lock(devicesMutex_);
 	if (devices_.contains(sourceId))
 	{
 		return std::visit(overloaded{[](std::monostate) { return SdoErrorCode::PdoMappingError; },
-									 [sourceId, pdoId, active](auto&& arg) {
-										 return arg.setReceivePdoActive(pdoId, active);
+									 [sourceId, pdoId, active](auto &&arg) {
+										 return arg->setReceivePdoActive(pdoId, active);
 									 }},
 						  devices_[sourceId]);
 	}
@@ -292,11 +318,13 @@ template<typename... Devices>
 SdoErrorCode
 CanopenMaster<Devices...>::setTPDOActive(uint8_t destinationId, uint8_t pdoId, bool active)
 {
+
+	std::unique_lock lock(devicesMutex_);
 	if (devices_.contains(destinationId))
 	{
 		return std::visit(overloaded{[](std::monostate) { return SdoErrorCode::PdoMappingError; },
-									 [destinationId, pdoId, active](auto&& arg) {
-										 return arg.setTransmitPdoActive(pdoId, active);
+									 [destinationId, pdoId, active](auto &&arg) {
+										 return arg->setTransmitPdoActive(pdoId, active);
 									 }},
 						  devices_[destinationId]);
 	}
@@ -307,14 +335,15 @@ template<typename... Devices>
 template<typename MessageCallback>
 void
 CanopenMaster<Devices...>::setRemoteRPDOActive(uint8_t remoteId, uint8_t pdoId, bool active,
-											   MessageCallback&& sendMessage)
+											   MessageCallback &&sendMessage)
 {
 
 	const uint16_t rpdoCommParamAddr = 0x1400 + pdoId;
 	const auto rpdoCobIdAddr = Address{rpdoCommParamAddr, 1};
 	const uint32_t rpdoCobId =
 		tpdoCanId(remoteId, pdoId) |
-		(active ? 0 : 0x8000'0000);  // Needs to be tpdoCanId, since they are reversed on master...
+		(active ? 0 : 0x8000'0000);  // Needs to be tpdoCanId, since they are
+									 // reversed on master...
 									 // TODO find a way to make that consistent
 	SdoClient_t::requestWrite(remoteId, rpdoCobIdAddr, (uint32_t)rpdoCobId,
 							  std::forward<MessageCallback>(sendMessage));
@@ -323,13 +352,14 @@ template<typename... Devices>
 template<typename MessageCallback>
 void
 CanopenMaster<Devices...>::setRemoteTPDOActive(uint8_t remoteId, uint8_t pdoId, bool active,
-											   MessageCallback&& sendMessage)
+											   MessageCallback &&sendMessage)
 {
 	uint16_t tpdoCommParamAddr = 0x1800 + pdoId;
 	const auto tpdoCobIdAddr = Address{tpdoCommParamAddr, 1};
 	const uint32_t tpdoCobId =
 		rpdoCanId(remoteId, pdoId) |
-		(active ? 0 : 0x8000'0000);  // Needs to be rpdoCanId, since they are reversed on master...
+		(active ? 0 : 0x8000'0000);  // Needs to be rpdoCanId, since they are
+									 // reversed on master...
 									 // TODO find a way to make that consistent
 	SdoClient_t::requestWrite(remoteId, tpdoCobIdAddr, (uint32_t)tpdoCobId,
 							  std::forward<MessageCallback>(sendMessage));
@@ -339,7 +369,7 @@ template<typename... Devices>
 template<typename OD, typename MessageCallback>
 void
 CanopenMaster<Devices...>::configureRemoteRPDO(uint8_t remoteId, uint8_t pdoId, TransmitPdo<OD> pdo,
-											   MessageCallback&& sendMessage)
+											   MessageCallback &&sendMessage)
 {
 	pdo.setInactive();
 	setRemoteRPDOActive(remoteId, pdoId, false, std::forward<MessageCallback>(sendMessage));
@@ -367,7 +397,7 @@ template<typename OD, typename MessageCallback>
 void
 CanopenMaster<Devices...>::configureRemoteTPDO(uint8_t remoteId, uint8_t pdoId, ReceivePdo<OD> pdo,
 											   uint16_t inhibitTime_100us,
-											   MessageCallback&& sendMessage)
+											   MessageCallback &&sendMessage)
 {
 	pdo.setInactive();
 	setRemoteTPDOActive(remoteId, pdoId, false, std::forward<MessageCallback>(sendMessage));
@@ -399,10 +429,12 @@ template<typename... Devices>
 std::vector<modm_canopen::Address>
 CanopenMaster<Devices...>::getActiveTPDOAddrs(uint8_t id)
 {
+
+	std::unique_lock lock(devicesMutex_);
 	if (!devices_.contains(id)) return {};
 	return std::visit(
 		overloaded{[](std::monostate) { return std::vector<modm_canopen::Address>(); },
-				   [](auto&& arg) { return arg.getActiveTPDOAddrs(); }},
+				   [](auto &&arg) { return arg->getActiveTPDOAddrs(); }},
 		devices_[id]);
 }
 
@@ -410,10 +442,12 @@ template<typename... Devices>
 std::vector<modm_canopen::Address>
 CanopenMaster<Devices...>::getActiveRPDOAddrs(uint8_t id)
 {
+
+	std::unique_lock lock(devicesMutex_);
 	if (!devices_.contains(id)) return {};
 	return std::visit(
 		overloaded{[](std::monostate) { return std::vector<modm_canopen::Address>(); },
-				   [](auto&& arg) { return arg.getActiveRPDOAddrs(); }},
+				   [](auto &&arg) { return arg->getActiveRPDOAddrs(); }},
 		devices_[id]);
 }
 

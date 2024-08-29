@@ -6,6 +6,7 @@
 #include <variant>
 #include <tuple>
 #include <optional>
+#include <memory>
 #include <span>
 #include <mutex>
 
@@ -29,7 +30,9 @@ class CanopenMaster
 {
 public:
 	using SdoClient_t = SdoClient<CanopenMaster<Devices...>>;
-	using Device_t = std::variant<std::monostate, Devices...>;
+	template<typename Device>
+	using DevicePtr_t = std::unique_ptr<Device>;
+	using Device_t = std::variant<std::monostate, DevicePtr_t<Devices>...>;
 
 	static void
 	setValueChangedAll(Address address);
@@ -75,12 +78,14 @@ public:
 	static void
 	setHeartbeatTimer(modm::Clock::duration duration, MessageCallback&& sendMessage);
 
-	static inline std::mutex masterMutex_{};
-
 private:
 	friend SdoClient_t;
 	static inline uint8_t masterId_{0};
+
+	static inline std::mutex devicesMutex_{};
 	static inline std::map<uint8_t, Device_t> devices_{};
+
+	static inline std::mutex heartbeatTimerMutex_{};
 	static inline modm::PeriodicTimer heartBeatTimer_{100ms};
 
 	template<typename MessageCallback>
@@ -94,8 +99,8 @@ public:
 	static auto
 	write(uint8_t id, Address address, Value value) -> SdoErrorCode;
 	static auto
-	write(uint8_t id, Address address, std::span<const uint8_t> data, int8_t size = -1)
-		-> SdoErrorCode;
+	write(uint8_t id, Address address, std::span<const uint8_t> data,
+		  int8_t size = -1) -> SdoErrorCode;
 
 	static std::optional<Value>
 	toValue(uint8_t id, Address address, std::span<const uint8_t> data, int8_t size = -1);
