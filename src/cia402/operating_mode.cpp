@@ -21,8 +21,20 @@ operatingModeToString(OperatingMode mode)
 			return "Position";
 		case OperatingMode::Velocity:
 			return "Velocity";
+		case OperatingMode::Test:
+			return "Test";
 	}
 	return "";  // Stop my compiler whining
+}
+
+bool
+operatingModeIsValid(int8_t value)
+{
+	return (value == int8_t(OperatingMode::Disabled)) ||
+		   (value == int8_t(OperatingMode::Voltage)) ||
+		   (value == int8_t(OperatingMode::Velocity)) ||
+		   (value == int8_t(OperatingMode::Position)) ||
+		   (value == int8_t(OperatingMode::Current)) || (value == int8_t(OperatingMode::Test));
 }
 
 }  // namespace cia402
