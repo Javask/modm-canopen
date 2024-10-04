@@ -17,57 +17,50 @@ struct ScalingFactor
 	uint32_t numerator{1};
 	uint32_t divisor{1};
 
-	template<typename Integer>
-	inline Integer
-	toInternal(Integer user) const
+	template<typename Internal, typename User>
+	inline Internal
+	toInternal(User user) const
 	{
-		static_assert(std::is_integral_v<Integer>);
-		typedef typename std::conditional_t<std::is_signed_v<Integer>, int32_t, uint32_t> Internal;
+		static_assert(std::is_arithmetic_v<Internal> && std::is_arithmetic_v<User>);
+		float result =
+			static_cast<float>(user) * static_cast<float>(numerator) / static_cast<float>(divisor);
 
-		Internal result = static_cast<Internal>(
-			std::round(static_cast<float>(user) * static_cast<float>(numerator) /
-					   static_cast<float>(divisor)));
+		if constexpr (std::is_integral_v<Internal>) { result = std::round(result); }
 
-		if constexpr (std::is_signed_v<Integer>)
+		if constexpr (std::is_signed_v<Internal>)
 		{
 			if (polarityInverted) result = -result;
 		}
 
-		if (result > std::numeric_limits<Integer>::max())
+		if (result > std::numeric_limits<Internal>::max())
 		{
-			return std::numeric_limits<Integer>::max();
+			return std::numeric_limits<Internal>::max();
 		}
-		if (result < std::numeric_limits<Integer>::min())
+		if (result < std::numeric_limits<Internal>::min())
 		{
-			return std::numeric_limits<Integer>::min();
+			return std::numeric_limits<Internal>::min();
 		}
-		return (Integer)(result);
+		return static_cast<Internal>(result);
 	}
 
-	template<typename Integer>
-	inline Integer
-	toUser(Integer internal) const
+	template<typename User, typename Internal>
+	inline User
+	toUser(Internal internal) const
 	{
-		static_assert(std::is_integral_v<Integer>);
-		typedef typename std::conditional_t<std::is_signed_v<Integer>, int32_t, uint32_t> Internal;
-		Internal result = static_cast<Internal>(
-			std::round(static_cast<float>(internal) * static_cast<float>(divisor) /
-					   static_cast<float>(numerator)));
+		static_assert(std::is_arithmetic_v<Internal> && std::is_arithmetic_v<User>);
+		float result = static_cast<float>(internal) * static_cast<float>(divisor) /
+					   static_cast<float>(numerator);
 
-		if constexpr (std::is_signed_v<Integer>)
+		if constexpr (std::is_integral_v<User>) { result = std::round(result); }
+
+		if constexpr (std::is_signed_v<User>)
 		{
 			if (polarityInverted) result = -result;
 		}
 
-		if (result > std::numeric_limits<Integer>::max())
-		{
-			return std::numeric_limits<Integer>::max();
-		}
-		if (result < std::numeric_limits<Integer>::min())
-		{
-			return std::numeric_limits<Integer>::min();
-		}
-		return (Integer)(result);
+		if (result > std::numeric_limits<User>::max()) { return std::numeric_limits<User>::max(); }
+		if (result < std::numeric_limits<User>::min()) { return std::numeric_limits<User>::min(); }
+		return static_cast<User>(result);
 	}
 };
 
