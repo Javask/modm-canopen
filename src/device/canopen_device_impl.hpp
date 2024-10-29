@@ -1,7 +1,7 @@
 #ifndef CANOPEN_CANOPEN_DEVICE_HPP
 #error "Do not include this file directly, use canopen_device.hpp instead"
 #endif
-
+#include "nmt_command.hpp"
 namespace modm_canopen
 {
 
@@ -96,22 +96,78 @@ CanopenDevice<OD, Protocols...>::read(Address address) -> std::variant<Value, Sd
 }
 
 template<typename OD, typename... Protocols>
+void
+CanopenDevice<OD, Protocols...>::handleNMTCommand(const modm::can::Message& msg)
+{
+	if (msg.getLength() != 2)
+	{
+		// Invalid length
+		return;
+	}
+	if (msg.data[1] != nodeId_ && msg.data[1] != 0)
+	{
+		// Not for us
+		return;
+	}
+	if (!isValidNMTCommand(msg.data[0]))
+	{
+		// Invalid command
+		return;
+	}
+
+	NMTCommand cmd = (NMTCommand)msg.data[0];
+	switch (cmd)
+	{
+		case NMTCommand::Start:
+			state_ = NMTState::Operational;
+			break;
+		case NMTCommand::Stop:
+			state_ = NMTState::Stopped;
+			break;
+		case NMTCommand::ResetNode:
+			// TODO reset for real
+			state_ = NMTState::PreOperational;
+			break;
+		case NMTCommand::EnterPreOperational:
+			state_ = NMTState::PreOperational;
+			break;
+		default:
+			break;
+	}
+}
+
+template<typename OD, typename... Protocols>
 template<typename MessageCallback>
 void
 CanopenDevice<OD, Protocols...>::processMessage(const modm::can::Message& message,
 												MessageCallback&& cb)
 {
-	for (auto& rpdo : receivePdos_)
+	Heartbeat<CanopenDevice>::processMessage(message, std::forward<MessageCallback>(cb));
+	if (message.getIdentifier() == 0)
 	{
-		rpdo.processMessage(message, [](Address address, Value value) { write(address, value); });
+		handleNMTCommand(message);
+		return;
 	}
-	if ((message.identifier & 0x7f) == nodeId_)
+
+	if (state_ != NMTState::Stopped)
 	{
-		SdoServer<CanopenDevice>::processMessage(message, std::forward<MessageCallback>(cb));
+		if ((message.identifier & 0x7f) == nodeId_)
+		{
+			SdoServer<CanopenDevice>::processMessage(message, std::forward<MessageCallback>(cb));
+		}
 	}
-	(Protocols::template processMessage<CanopenDevice<OD, Protocols...>, MessageCallback>(
-		 message, std::forward<MessageCallback>(cb)),
-	 ...);
+	if (state_ == NMTState::Operational)
+	{
+		for (auto& rpdo : receivePdos_)
+		{
+			rpdo.processMessage(message,
+								[](Address address, Value value) { write(address, value); });
+		}
+
+		(Protocols::template processMessage<CanopenDevice<OD, Protocols...>, MessageCallback>(
+			 message, std::forward<MessageCallback>(cb)),
+		 ...);
+	}
 }
 
 template<typename OD, typename... Protocols>
@@ -119,12 +175,16 @@ template<typename MessageCallback>
 void
 CanopenDevice<OD, Protocols...>::update(MessageCallback&& cb)
 {
-	for (auto& tpdo : transmitPdos_)
+	Heartbeat<CanopenDevice>::update(std::forward<MessageCallback>(cb));
+	if (state_ == NMTState::Operational)
 	{
-		if (tpdo.isActive())
+		for (auto& tpdo : transmitPdos_)
 		{
-			auto message = tpdo.nextMessage([](Address address) { return read(address); });
-			if (message) { std::forward<MessageCallback>(cb)(*message); }
+			if (tpdo.isActive())
+			{
+				auto message = tpdo.nextMessage([](Address address) { return read(address); });
+				if (message) { std::forward<MessageCallback>(cb)(*message); }
+			}
 		}
 	}
 }
@@ -176,10 +236,18 @@ CanopenDevice<OD, Protocols...>::nodeId()
 }
 
 template<typename OD, typename... Protocols>
+NMTState
+CanopenDevice<OD, Protocols...>::nmtState()
+{
+	return state_;
+}
+
+template<typename OD, typename... Protocols>
 constexpr auto
 CanopenDevice<OD, Protocols...>::registerHandlers() -> HandlerMap<OD>
 {
 	HandlerMap<OD> handlers;
+	Heartbeat<CanopenDevice>{}.registerHandlers(handlers);
 	ReceivePdoConfigurator<CanopenDevice>{}.registerHandlers(handlers);
 	TransmitPdoConfigurator<CanopenDevice>{}.registerHandlers(handlers);
 	SdoServer<CanopenDevice>{}.registerHandlers(handlers);

@@ -4,13 +4,17 @@
 #include <array>
 #include <span>
 #include <optional>
+#include "nmt_state.hpp"
 #include "handler_map.hpp"
+
 #include "../object_dictionary.hpp"
 #include "../receive_pdo.hpp"
 #include "../receive_pdo_configurator.hpp"
 #include "../transmit_pdo_configurator.hpp"
 #include "../transmit_pdo.hpp"
 #include "sdo_server.hpp"
+#include "heartbeat.hpp"
+
 namespace modm_canopen
 {
 
@@ -35,6 +39,8 @@ public:
 	setNodeId(uint8_t id);
 	static uint8_t
 	nodeId();
+	static NMTState
+	nmtState();
 
 	static void
 	setValueChanged(Address address);
@@ -52,6 +58,7 @@ private:
 	friend ReceivePdoConfigurator<CanopenDevice>;
 	friend TransmitPdoConfigurator<CanopenDevice>;
 	friend SdoServer<CanopenDevice>;
+	friend Heartbeat<CanopenDevice>;
 
 	using Map = HandlerMap<OD>;
 
@@ -66,6 +73,10 @@ private:
 
 	static inline constinit std::array<ReceivePdo_t, MaxRPDOCount> receivePdos_;
 	static inline constinit std::array<TransmitPdo_t, MaxTPDOCount> transmitPdos_;
+
+	static void
+	handleNMTCommand(const modm::can::Message& msg);
+	static inline NMTState state_{NMTState::PreOperational};
 
 public:
 	// TODO: replace return value with std::expected like type, add error code to read handler

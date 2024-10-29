@@ -46,10 +46,9 @@ Dummy0007=0
 Lines=0
 
 [MandatoryObjects]
-SupportedObjects=0
-; 1=0x1000
-; 2=0x1001
-; 3=0x1018
+SupportedObjects=2
+1=0x1016
+2=0x1017
 
 [1000]
 ParameterName=Device type
@@ -67,6 +66,36 @@ DataType=0x0005
 AccessType=ro
 PDOMapping=0
 
+[1016]
+ParameterName=Consumer heartbeat time
+ObjectType=0x9
+SubNumber=2
+
+[1016sub0]
+ParameterName=Number of entries
+ObjectType=0x7
+DataType=0x0007
+AccessType=ro
+DefaultValue=1
+PDOMapping=0
+LowLimit=1
+HighLimit=1
+
+[1016sub1]
+ParameterName=Heartbeat Consumer Time #1
+ObjectType=0x7
+DataType=0x0007
+AccessType=rw
+DefaultValue=0
+PDOMapping=0
+
+[1017]
+ParameterName=Producer heartbeat time
+ObjectType=0x7
+DataType=0x0006
+AccessType=rw
+DefaultValue=0
+PDOMapping=0
 
 [1018]
 ParameterName=Identity Object
