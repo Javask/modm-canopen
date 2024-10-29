@@ -64,7 +64,7 @@ CanopenDevice<OD, Protocols...>::write(Address address, std::span<const uint8_t>
 	auto handler = accessHandlers.lookupWriteHandler(address);
 	if (handler)
 	{
-		const Value value = valueFromBytes(entry->dataType, data.data());
+		const Value value = valueFromBytes(entry->dataType, data);
 		const auto result = callWriteHandler(*handler, value);
 		if (result == SdoErrorCode::NoError) { setValueChanged(address); }
 

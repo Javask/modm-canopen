@@ -85,35 +85,45 @@ valueSupportsExpediteTransfer(const Value& value)
 }
 
 inline Value
-valueFromBytes(DataType type, const uint8_t* data)
+valueFromBytes(DataType type, std::span<const uint8_t> data)
 {
 	switch (type)
 	{
 		case DataType::UInt8:
+			if(data.size() < sizeof(uint8_t)) return Value();
 			return Value(uint8_t(data[0]));
 		case DataType::UInt16:
+			if(data.size() < sizeof(uint16_t)) return Value();
 			return Value(uint16_t(data[0] | (data[1] << 8)));
 		case DataType::UInt32:
+			if(data.size() < sizeof(uint32_t)) return Value();
 			return Value(uint32_t(data[0] | (data[1] << 8) | (data[2] << 16) | (data[3] << 24)));
 		case DataType::UInt64:
+			if(data.size() < sizeof(uint64_t)) return Value();
 			return Value(uint64_t(data[0]) | (uint64_t(data[1]) << 8) | (uint64_t(data[2]) << 16) |
 						 (uint64_t(data[3]) << 24) | (uint64_t(data[4]) << 32) |
 						 (uint64_t(data[5]) << 40) | (uint64_t(data[6]) << 48) |
 						 (uint64_t(data[7]) << 56));
 		case DataType::Int8:
+			if(data.size() < sizeof(int8_t)) return Value();
 			return Value(int8_t(data[0]));
 		case DataType::Int16:
+			if(data.size() < sizeof(int16_t)) return Value();
 			return Value(int16_t(data[0] | (data[1] << 8)));
 		case DataType::Int32:
+			if(data.size() < sizeof(int32_t)) return Value();
 			return Value(int32_t(data[0] | (data[1] << 8) | (data[2] << 16) | (data[3] << 24)));
 		case DataType::Int64:
+			if(data.size() < sizeof(int64_t)) return Value();
 			return Value(int64_t(data[0]) | (int64_t(data[1]) << 8) | (int64_t(data[2]) << 16) |
 						 (int64_t(data[3]) << 24) | (int64_t(data[4]) << 32) |
 						 (int64_t(data[5]) << 40) | (int64_t(data[6]) << 48) |
 						 (int64_t(data[7]) << 56));
 		case DataType::Real32: {
+
+			if(data.size() < sizeof(float32_t)) return Value();
 			float32_t temp;
-			memcpy(&temp, &data[0], sizeof(float32_t));
+			memcpy(&temp, data.data(), sizeof(float32_t));
 			// TODO replace with guaranteed 32bit float type if that exists
 			return Value(temp);
 		}
@@ -124,12 +134,40 @@ valueFromBytes(DataType type, const uint8_t* data)
 }
 
 inline void
-valueToBytes(Value value, uint8_t* data)
+valueToBytes(const Value& val, std::span<uint8_t> out)
 {
-	// TODO: hack
-	std::visit([data](auto value) { std::memcpy(data, &value, sizeof(value)); }, value);
+	if (std::holds_alternative<int8_t>(val))
+	{
+		if (out.size() >= sizeof(int8_t)) { out[0] = std::get<int8_t>(val); }
+	} else if (std::holds_alternative<int16_t>(val))
+	{
+		if (out.size() >= sizeof(int16_t)) { *((int16_t*)out.data()) = std::get<int16_t>(val); }
+	} else if (std::holds_alternative<int32_t>(val))
+	{
+		if (out.size() >= sizeof(int32_t)) { *((int32_t*)out.data()) = std::get<int32_t>(val); }
+	} else if (std::holds_alternative<int64_t>(val))
+	{
+		if (out.size() >= sizeof(int64_t)) { *((int64_t*)out.data()) = std::get<int64_t>(val); }
+	} else if (std::holds_alternative<uint8_t>(val))
+	{
+		if (out.size() >= sizeof(uint8_t)) { out[0] = std::get<uint8_t>(val); }
+	} else if (std::holds_alternative<uint16_t>(val))
+	{
+		if (out.size() >= sizeof(uint16_t)) { *((uint16_t*)out.data()) = std::get<uint16_t>(val); }
+	} else if (std::holds_alternative<uint32_t>(val))
+	{
+		if (out.size() >= sizeof(uint32_t)) { *((uint32_t*)out.data()) = std::get<uint32_t>(val); }
+	} else if (std::holds_alternative<uint64_t>(val))
+	{
+		if (out.size() >= sizeof(uint64_t)) { *((uint64_t*)out.data()) = std::get<uint64_t>(val); }
+	} else if (std::holds_alternative<float32_t>(val))
+	{
+		if (out.size() >= sizeof(float32_t))
+		{
+			*((float32_t*)out.data()) = std::get<float32_t>(val);
+		}
+	}
 }
-
 }  // namespace modm_canopen
 
 #endif  // CANOPEN_OBJECT_DICTIONARY_HPP

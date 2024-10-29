@@ -24,8 +24,9 @@ ReceivePdo<OD>::processMessage(const modm::can::Message &message, Callback &&cb)
 		{
 			const auto address = PdoObject<OD>::mappings_[i].address;
 			const auto size = PdoObject<OD>::mappings_[i].bitLength / 8;
-			const auto value =
-				valueFromBytes(PdoObject<OD>::mappingTypes_[i], message.data + index);
+			const auto value = valueFromBytes(
+				PdoObject<OD>::mappingTypes_[i],
+				std::span<const uint8_t>(message.data + index, message.capacity - index));
 			std::forward<Callback>(cb)(address, value);
 			index += size;
 		}

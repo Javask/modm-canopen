@@ -111,7 +111,7 @@ detail::uploadResponse(uint32_t txCOBId, Address address, const Value& value,
 	message.data[1] = address.index & 0xFF;
 	message.data[2] = (address.index & 0xFF'00) >> 8;
 	message.data[3] = address.subindex;
-	valueToBytes(value, &message.data[4]);
+	valueToBytes(value, std::span<uint8_t>(&message.data[4], message.capacity - 4));
 }
 
 void

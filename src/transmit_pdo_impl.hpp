@@ -24,7 +24,7 @@ TransmitPdo<OD>::getMessage(Callback &&cb)
 			const auto value = std::forward<Callback>(cb)(address);
 			const auto *ptr = std::get_if<Value>(&value);
 			if (!ptr) return std::nullopt;
-			valueToBytes(*ptr, message.data + index);
+			valueToBytes(*ptr, std::span<uint8_t>(message.data + index, message.capacity - index));
 			index += size;
 		}
 		message.setLength(index);
