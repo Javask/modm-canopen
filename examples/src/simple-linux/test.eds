@@ -113,23 +113,54 @@ AccessType=ro
 PDOMapping=0
 
 [OptionalObjects]
-SupportedObjects=16
-1=0x1400
-2=0x1401
-3=0x1402
-4=0x1403
-5=0x1600
-6=0x1601
-7=0x1602
-8=0x1603
-9=0x1800
-10=0x1801
-11=0x1802
-12=0x1803
-13=0x1A00
-14=0x1A01
-15=0x1A02
-16=0x1A03
+SupportedObjects=17
+1=0x1200
+2=0x1400
+3=0x1401
+4=0x1402
+5=0x1403
+6=0x1600
+7=0x1601
+8=0x1602
+9=0x1603
+10=0x1800
+11=0x1801
+12=0x1802
+13=0x1803
+14=0x1A00
+15=0x1A01
+16=0x1A02
+17=0x1A03
+
+
+[1200]
+ParameterName=Server SDO Parameter
+ObjectType=0x9
+SubNumber=3
+
+[1200sub0]
+ParameterName=Number of entries
+ObjectType=0x7
+DataType=0x0005
+AccessType=ro
+DefaultValue=2
+PDOMapping=0
+LowLimit=2
+HighLimit=2
+
+[1200sub1]
+ParameterName=SDO receive COB-ID
+ObjectType=0x7
+DataType=0x0007
+AccessType=ro
+PDOMapping=0
+
+[1200sub2]
+ParameterName=SDO transmit COB-ID
+ObjectType=0x7
+DataType=0x0007
+AccessType=ro
+PDOMapping=0
 
 [1400]
 ParameterName=RPDO1 Communication Parameter

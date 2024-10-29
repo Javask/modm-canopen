@@ -1,4 +1,5 @@
-#include <modm-canopen/canopen_device.hpp>
+#include <modm-canopen/device/canopen_device.hpp>
+#include <modm-canopen/generated/test_od.hpp>
 #include <modm/platform/can/socketcan.hpp>
 
 #include <iostream>
@@ -10,10 +11,13 @@ uint32_t value2002 = 42;
 using modm_canopen::Address;
 using modm_canopen::CanopenDevice;
 using modm_canopen::SdoErrorCode;
-using modm_canopen::generated::DefaultObjects;
+using modm_canopen::generated::test_OD;
 
 struct Test
 {
+    template<typename Device, typename MessageCallback>
+    static void processMessage(const modm::can::Message&, MessageCallback&&){}
+
     template<typename ObjectDictionary>
     constexpr void registerHandlers(modm_canopen::HandlerMap<ObjectDictionary>& map)
     {
@@ -35,7 +39,7 @@ struct Test
 
 int main()
 {
-    using Device = CanopenDevice<DefaultObjects, Test>;
+    using Device = CanopenDevice<test_OD, Test>;
     const uint8_t nodeId = 5;
     Device::initialize(nodeId);
 

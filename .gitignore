@@ -8,6 +8,7 @@
 build/
 .idea/
 .vagrant/
+.direnv/
 
 # Generated log files from lbuild
 project.xml.log
