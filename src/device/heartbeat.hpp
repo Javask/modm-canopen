@@ -3,6 +3,7 @@
 #include <modm/architecture/interface/can_message.hpp>
 #include <cstdint>
 #include <modm/processing/timer.hpp>
+#include <modm/debug/logger.hpp>
 
 using namespace std::chrono_literals;
 
@@ -42,8 +43,10 @@ public:
 	update(MessageCallback &&cb)
 	{
 		auto now = modm::Clock::now();
+		// Bootup service
 		if (firstUpdate_)
 		{
+			// Technically not heartbeat but it uses the same id
 			firstUpdate_ = false;
 			lastUpdate_ = now;
 			modm::can::Message msg{};
@@ -72,8 +75,19 @@ public:
 
 	template<typename MessageCallback>
 	static void
-	processMessage(const modm::can::Message &message, MessageCallback &&)
+	processMessage(const modm::can::Message &message, MessageCallback &&cb)
 	{
+		// Node guarding
+		if (message.getIdentifier() == 0x700u + Device::nodeId() &&
+			message.isRemoteTransmitRequest())
+		{
+			// Technically not heartbeat but it uses the same id
+			lastUpdate_ = modm::Clock::now();
+			modm::can::Message msg{};
+			detail::makeHeartbeatMSG(Device::nodeId(), msg, (uint8_t)Device::nmtState());
+			cb(msg);
+		}
+
 		if (message.getIdentifier() == 0x700u + expectedHeartbeatNodeId_)
 		{
 			if (message.getLength() != 1)
