@@ -64,6 +64,7 @@
                 python-pkgs.pip
                 python-pkgs.matplotlib
                 python-pkgs.canopen
+                python-pkgs.black
                 modm-python-package
                 lbuild-python-package
               ]))
