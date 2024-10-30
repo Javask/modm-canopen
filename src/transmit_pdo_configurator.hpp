@@ -27,14 +27,12 @@ public:
 			+[](uint32_t cobId) { return setTransmitPdoCobId(pdo, cobId); });
 
 		map.template setReadHandler<Address{0x1800 + pdo, 2}>(
-			// 0xFF: async
-			+[]() -> uint8_t { return 0xFF; });
+			+[]() -> uint8_t { return tpdo.getTransmitMode().value; });
 
 		map.template setWriteHandler<Address{0x1800 + pdo, 2}>(
-			// 0xFF: async
 			+[](uint8_t transmitMode) -> SdoErrorCode {
-				return transmitMode == 0xFF ? SdoErrorCode::NoError
-											: SdoErrorCode::UnsupportedAccess;
+				return tpdo.setTransmitMode(transmitMode) ? SdoErrorCode::NoError
+														  : SdoErrorCode::UnsupportedAccess;
 			});
 
 		map.template setReadHandler<Address{0x1800 + pdo, 3}>(

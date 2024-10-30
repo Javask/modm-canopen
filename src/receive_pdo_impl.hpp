@@ -46,4 +46,13 @@ ReceivePdo<OD>::validateMapping(PdoMapping mapping)
 	}
 	return SdoErrorCode::NoError;
 }
+
+template<typename OD>
+bool
+ReceivePdo<OD>::setTransmitMode(uint8_t mode)
+{
+	if (mode > 0xF0 && mode < 0xFE) return false;
+	PdoObject<OD>::mode_.value = mode;
+	return true;
+}
 }  // namespace modm_canopen

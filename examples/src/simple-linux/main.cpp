@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <thread>
+#include <modm/processing/timer.hpp>
 #include <modm/debug/logger.hpp>
 
 uint32_t value2002 = 42;
@@ -63,8 +64,24 @@ main()
 	// to trigger asynchronous PDO transmissions
 	Device::setValueChanged(Address{0x2002, 0});
 
+	modm::PeriodicTimer timer{100s};
+
 	while (true)
 	{
+		if (timer.execute())
+		{
+			if (Device::getEMCYError() != modm_canopen::EMCYError::NoError)
+			{
+				Device::getManufacturerError() = {};
+				Device::getErrorRegister() = 0;
+				Device::setError(modm_canopen::EMCYError::NoError);
+			} else
+			{
+				Device::getManufacturerError() = {0xDE, 0xAD, 0xBE, 0xEF, 0xFF};
+				Device::getErrorRegister() = 69;
+				Device::setError(modm_canopen::EMCYError::GenericError);
+			}
+		}
 		if (can.isMessageAvailable())
 		{
 			modm::can::Message message{};
@@ -79,6 +96,5 @@ main()
 			Device::processMessage(message, sendMessage);
 		}
 		Device::update(sendMessage);
-		std::this_thread::sleep_for(std::chrono::milliseconds{1});
 	}
 }

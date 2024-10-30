@@ -9,6 +9,7 @@
 
 #include "../object_dictionary.hpp"
 #include "../receive_pdo.hpp"
+#include "../emcy_error.hpp"
 #include "../receive_pdo_configurator.hpp"
 #include "../transmit_pdo_configurator.hpp"
 #include "../transmit_pdo.hpp"
@@ -42,6 +43,11 @@ public:
 	static NMTState
 	nmtState();
 
+	static bool
+	isInSyncWindow();
+	static uint8_t
+	syncCounter();
+
 	static void
 	setValueChanged(Address address);
 
@@ -71,14 +77,46 @@ private:
 
 	static inline uint8_t nodeId_{};
 
+	static inline uint8_t syncCounterOverflow_{0};
+	static inline uint8_t lastSyncCounter_{0};
+	static inline uint32_t syncCobId_{0x80};
+	static inline modm::PreciseClock::duration syncWindowDuration_{100ms};
+	static inline modm::PreciseClock::time_point lastSyncTime_{};
+
 	static inline constinit std::array<ReceivePdo_t, MaxRPDOCount> receivePdos_;
 	static inline constinit std::array<TransmitPdo_t, MaxTPDOCount> transmitPdos_;
 
 	static void
+	handleSync(const modm::can::Message& msg);
+
+	static void
 	handleNMTCommand(const modm::can::Message& msg);
+
+	template<typename MessageCallback>
+	static void
+	sendEMCY(MessageCallback&& cb);
+
 	static inline NMTState state_{NMTState::PreOperational};
 
+	static inline bool emcyDue_{false};
+	static inline modm::PreciseClock::time_point lastEmcyTime_{};
+	static inline modm::PreciseClock::duration emcyInhibitTime_{5ms};
+	static inline bool emcyEnabled_{true};
+	static inline uint32_t emcyCobId_{0x80u + nodeId_};
+	static inline EMCYError emcy_{EMCYError::NoError};
+	static inline uint8_t errorReg_{0};
+	static inline std::array<uint8_t, 5> manufacturerError_{};
+
 public:
+	static EMCYError
+	getEMCYError();
+	static void
+	setError(EMCYError emcy);
+	static uint8_t&
+	getErrorRegister();
+	static std::array<uint8_t, 5>&
+	getManufacturerError();
+
 	// TODO: replace return value with std::expected like type, add error code to read handler
 	static auto
 	read(Address address) -> std::variant<Value, SdoErrorCode>;

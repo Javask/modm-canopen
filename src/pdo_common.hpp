@@ -7,6 +7,27 @@
 namespace modm_canopen
 {
 
+struct TransmitMode
+{
+	uint8_t value{};
+	inline bool
+	isOnSync() const
+	{
+		return value <= 0xF0;
+	}
+	inline bool
+	isAsync() const
+	{
+		return value >= 0xFE;
+	}
+	// Only valid for TPDO
+	inline bool
+	isRTR(bool sync) const
+	{
+		return (sync && value == 0xFC) || value == 0xFD;
+	}
+};
+
 struct PdoMapping
 {
 	Address address;
@@ -36,6 +57,7 @@ protected:
 	bool active_{false};
 	uint32_t canId_{};
 	uint_fast8_t mappingCount_{};
+	TransmitMode mode_{};
 	std::array<PdoMapping, MaxMappingCount> mappings_{};
 	std::array<DataType, MaxMappingCount> mappingTypes_{};
 
@@ -61,6 +83,11 @@ public:
 	setMapping(uint_fast8_t index, PdoMapping mapping);
 	PdoMapping
 	mapping(uint_fast8_t index) const;
+
+	void
+	setTransmitMode(uint8_t value);
+	const TransmitMode&
+	getTransmitMode() const;
 
 	uint32_t
 	cobId() const

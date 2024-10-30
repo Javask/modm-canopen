@@ -46,9 +46,16 @@ Dummy0007=0
 Lines=0
 
 [MandatoryObjects]
-SupportedObjects=2
-1=0x1016
-2=0x1017
+SupportedObjects=9
+1=0x1001
+2=0x1003
+3=0x1005
+4=0x1007
+5=0x1014
+6=0x1015
+7=0x1016
+8=0x1017
+9=0x1019
 
 [1000]
 ParameterName=Device type
@@ -58,13 +65,69 @@ AccessType=ro
 DefaultValue=0x60192
 PDOMapping=0
 
-
 [1001]
 ParameterName=Error register
 ObjectType=0x7
 DataType=0x0005
 AccessType=ro
 PDOMapping=0
+
+[1003]
+ParameterName=Pre-defined error field
+ObjectType=0x9
+SubNumber=2
+
+[1003sub0]
+ParameterName=Number of errors
+ObjectType=0x7
+DataType=0x0007
+AccessType=ro
+DefaultValue=0
+PDOMapping=0
+LowLimit=0
+HighLimit=1
+
+[1003sub1]
+ParameterName=Standard error field
+ObjectType=0x7
+DataType=0x0007
+AccessType=ro
+DefaultValue=0
+PDOMapping=0
+
+[1005]
+ParameterName=SYNC COB ID
+ObjectType=0x7
+DataType=0x0007
+AccessType=rw
+DefaultValue=0
+PDOMapping=0
+
+
+[1007]
+ParameterName=Communication window duration
+ObjectType=0x7
+DataType=0x0007
+AccessType=rw
+DefaultValue=0
+PDOMapping=0
+
+[1014]
+ParameterName=EMCY COB-ID
+ObjectType=0x7
+DataType=0x0007
+AccessType=rw
+DefaultValue=$NODEID+0x80
+PDOMapping=0
+
+[1015]
+ParameterName=Inhibit Time EMCY
+ObjectType=0x7
+DataType=0x0006
+AccessType=rw
+DefaultValue=50
+PDOMapping=0
+
 
 [1016]
 ParameterName=Consumer heartbeat time
@@ -140,6 +203,14 @@ ObjectType=0x7
 DataType=0x0007
 AccessType=ro
 PDOMapping=0
+
+[1019]
+ParameterName=Sync Counter Overflow
+ObjectType=0x7
+DataType=0x0005
+AccessType=rw
+PDOMapping=0
+DefaultValue=0
 
 [OptionalObjects]
 SupportedObjects=17

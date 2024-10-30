@@ -43,12 +43,6 @@ struct SendOnEvent
 	}
 };
 
-enum class TransmitMode
-{
-	OnSync,
-	OnEvent
-};
-
 template<typename OD>
 class TransmitPdo;
 
@@ -67,10 +61,15 @@ public:
 
 	template<typename Callback>
 	std::optional<modm::can::Message>
-	nextMessage(Callback &&cb);
+	nextMessage(bool inSync, Callback &&cb);
 
+	template<typename ReadCallback, typename MessageCallback>
 	void
-	setTransmitMode(TransmitMode mode);
+	processMessage(const modm::can::Message &msg, ReadCallback &&read, MessageCallback &&cb);
+
+	bool
+	setTransmitMode(uint8_t mode);
+
 	// TODO: change parameter types
 	SdoErrorCode
 	setEventTimeout(uint16_t milliseconds);  // 0 to disable
@@ -84,7 +83,8 @@ public:
 private:
 	TransmitMode transmitMode_{};
 	SendOnEvent sendOnEvent_{};
-	bool sync_{false};
+	uint8_t syncCount_{0};
+	bool rtr_{false};
 
 	template<typename Callback>
 	std::optional<modm::can::Message>

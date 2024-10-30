@@ -11,7 +11,7 @@ namespace modm_canopen
 enum class ReceiveMode
 {
 	Async,
-	// TODO: OnSync
+	OnSync
 };
 
 template<typename OD>
@@ -21,6 +21,9 @@ public:
 	template<typename Callback>
 	void
 	processMessage(const modm::can::Message &message, Callback &&cb);
+
+	bool
+	setTransmitMode(uint8_t mode);
 
 protected:
 	virtual SdoErrorCode

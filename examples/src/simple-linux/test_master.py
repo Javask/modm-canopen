@@ -6,7 +6,7 @@ node = canopen.RemoteNode(5, "test.eds")
 network.add_node(node)
 network.connect(bustype="socketcan", channel="vcan0")
 # Send periodic sync
-# network.sync.start(0.01)
+network.sync.start(10)
 
 # Wait for bootup
 # print("Waiting for bootup...")
@@ -18,6 +18,11 @@ network.connect(bustype="socketcan", channel="vcan0")
 
 
 network.nmt.state = "PRE-OPERATIONAL"
+
+
+def on_emcy(err):
+    print("EMCY Received: {}".format(err))
+node.emcy.add_callback(on_emcy)
 
 node.tpdo.read()
 # Re-map TxPDO1

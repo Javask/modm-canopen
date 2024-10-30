@@ -67,7 +67,7 @@ public:
 		{
 			if (now - lastHeartbeatTime_ > heartbeatConsumerTime_)
 			{
-				// TODO fire EMCY
+				Device::setError(EMCYError::HeartbeartOrGuardingError);
 				heartbeatMissed_ = true;
 			}
 		}
@@ -93,7 +93,7 @@ public:
 			if (message.getLength() != 1)
 			{
 				// Invalid length!
-				// TODO fire EMCY
+				Device::setError(EMCYError::HeartbeartOrGuardingError);
 			} else
 			{
 				lastHeartbeatTime_ = modm::Clock::now();

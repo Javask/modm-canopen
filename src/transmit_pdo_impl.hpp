@@ -10,7 +10,10 @@ template<typename Callback>
 std::optional<modm::can::Message>
 TransmitPdo<OD>::getMessage(Callback &&cb)
 {
+	rtr_ = false;
+	syncCount_ = 0;
 	sendOnEvent_.updated_ = false;
+
 	modm::can::Message message{PdoObject<OD>::canId_};
 	message.setExtended(false);
 
@@ -36,7 +39,7 @@ template<typename OD>
 void
 TransmitPdo<OD>::sync()
 {
-	sync_ = true;
+	syncCount_++;
 }
 
 template<typename OD>
@@ -49,9 +52,16 @@ TransmitPdo<OD>::setValueUpdated()
 template<typename OD>
 template<typename Callback>
 std::optional<modm::can::Message>
-TransmitPdo<OD>::nextMessage(Callback &&cb)
+TransmitPdo<OD>::nextMessage(bool inSync, Callback &&cb)
 {
-	const bool send = (transmitMode_ == TransmitMode::OnSync && sync_) || sendOnEvent_.send();
+	const bool sendOnSync = PdoObject<OD>::getTransmitMode().isOnSync() &&
+							syncCount_ > PdoObject<OD>::getTransmitMode().value &&
+							(inSync || PdoObject<OD>::getTransmitMode().value == 0);
+	const bool sendAsync = PdoObject<OD>::getTransmitMode().isAsync() && sendOnEvent_.send();
+	const bool sendRTRSync =
+		(rtr_ && PdoObject<OD>::getTransmitMode().value == 0xFC && inSync && syncCount_ != 0);
+
+	const bool send = sendOnSync || sendAsync || sendRTRSync;
 
 	if (send)
 	{
@@ -63,10 +73,12 @@ TransmitPdo<OD>::nextMessage(Callback &&cb)
 }
 
 template<typename OD>
-void
-TransmitPdo<OD>::setTransmitMode(TransmitMode mode)
+bool
+TransmitPdo<OD>::setTransmitMode(uint8_t mode)
 {
-	transmitMode_ = mode;
+	if (mode > 0xF0 && mode < 0xFC) return false;
+	PdoObject<OD>::mode_.value = mode;
+	return true;
 }
 
 template<typename OD>
@@ -111,6 +123,23 @@ TransmitPdo<OD>::validateMapping(PdoMapping mapping)
 		return SdoErrorCode::PdoMappingError;
 	}
 	return SdoErrorCode::NoError;
+}
+
+template<typename OD>
+template<typename ReadCallback, typename MessageCallback>
+void
+TransmitPdo<OD>::processMessage(const modm::can::Message &message, ReadCallback &&read,
+								MessageCallback &&cb)
+{
+	if (message.getIdentifier() == PdoObject<OD>::cobId() && message.isRemoteTransmitRequest())
+	{
+		rtr_ = true;
+	}
+	if (rtr_ && PdoObject<OD>::getTransmitMode().value == 0xFD)
+	{
+		auto newMsg = getMessage(std::forward<ReadCallback>(read));
+		if (newMsg) cb(*newMsg);
+	}
 }
 
 }  // namespace modm_canopen

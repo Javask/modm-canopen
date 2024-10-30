@@ -137,11 +137,62 @@ CanopenDevice<OD, Protocols...>::handleNMTCommand(const modm::can::Message& msg)
 }
 
 template<typename OD, typename... Protocols>
+void
+CanopenDevice<OD, Protocols...>::handleSync(const modm::can::Message& message)
+{
+	if ((syncCounterOverflow_ == 0 && message.getLength() != 0) ||
+		(syncCounterOverflow_ != 0 && message.getLength() != 1))
+	{
+		setError(EMCYError::UnexpectedSYNCData);
+	}
+	if (syncCounterOverflow_ != 0)
+	{
+		const uint8_t newCounter = message.data[0];
+		int diff = (newCounter - lastSyncCounter_) % syncCounterOverflow_;
+		if (diff < 0) diff += syncCounterOverflow_;
+
+		if (diff > 1 || newCounter > syncCounterOverflow_)
+		{
+			setError(EMCYError::UnexpectedSYNCData);
+		}
+		lastSyncCounter_ = newCounter;
+	}
+	lastSyncTime_ = modm::PreciseClock::now();
+
+	for (auto& tpdo : transmitPdos_) { tpdo.sync(); }
+}
+
+template<typename OD, typename... Protocols>
+template<typename MessageCallback>
+void
+CanopenDevice<OD, Protocols...>::sendEMCY(MessageCallback&& cb)
+{
+	if (emcyEnabled_)
+	{
+		emcyDue_ = false;
+		lastEmcyTime_ = modm::PreciseClock::now();
+		modm::can::Message msg{};
+		msg.setIdentifier(emcyCobId_);
+		*((uint16_t*)msg.data) = (uint16_t)emcy_;
+		msg.data[2] = errorReg_;
+		std::copy(manufacturerError_.begin(), manufacturerError_.end(),
+				  std::span<uint8_t>(msg.data + 3, msg.capacity - 3).begin());
+		msg.setLength(3 + manufacturerError_.size());
+		cb(msg);
+	}
+}
+
+template<typename OD, typename... Protocols>
 template<typename MessageCallback>
 void
 CanopenDevice<OD, Protocols...>::processMessage(const modm::can::Message& message,
 												MessageCallback&& cb)
 {
+	if (message.getIdentifier() == syncCobId_)
+	{
+		handleSync(message);
+		return;
+	}
 	Heartbeat<CanopenDevice>::processMessage(message, std::forward<MessageCallback>(cb));
 	if (message.getIdentifier() == 0)
 	{
@@ -160,8 +211,19 @@ CanopenDevice<OD, Protocols...>::processMessage(const modm::can::Message& messag
 	{
 		for (auto& rpdo : receivePdos_)
 		{
-			rpdo.processMessage(message,
-								[](Address address, Value value) { write(address, value); });
+			if (rpdo.getTransmitMode().isAsync() ||
+				(rpdo.getTransmitMode().isOnSync() && isInSyncWindow()))
+			{
+				rpdo.processMessage(message,
+									[](Address address, Value value) { write(address, value); });
+			}
+		}
+
+		for (auto& tpdo : transmitPdos_)
+		{
+			tpdo.processMessage(
+				message, [](Address address) { return read(address); },
+				std::forward<MessageCallback>(cb));
 		}
 
 		(Protocols::template processMessage<CanopenDevice<OD, Protocols...>, MessageCallback>(
@@ -175,6 +237,11 @@ template<typename MessageCallback>
 void
 CanopenDevice<OD, Protocols...>::update(MessageCallback&& cb)
 {
+	if (emcyDue_ && (lastEmcyTime_.time_since_epoch().count() == 0 ||
+					 modm::PreciseClock::now() - lastEmcyTime_ > emcyInhibitTime_))
+	{
+		sendEMCY(std::forward<MessageCallback>(cb));
+	}
 	Heartbeat<CanopenDevice>::update(std::forward<MessageCallback>(cb));
 	if (state_ == NMTState::Operational)
 	{
@@ -182,7 +249,8 @@ CanopenDevice<OD, Protocols...>::update(MessageCallback&& cb)
 		{
 			if (tpdo.isActive())
 			{
-				auto message = tpdo.nextMessage([](Address address) { return read(address); });
+				auto message = tpdo.nextMessage(isInSyncWindow(),
+												[](Address address) { return read(address); });
 				if (message) { std::forward<MessageCallback>(cb)(*message); }
 			}
 		}
@@ -225,6 +293,8 @@ CanopenDevice<OD, Protocols...>::setNodeId(uint8_t id)
 	{
 		receivePdos_[i].setCanId(0x100 * (i + 2) | nodeId_);
 	}
+	// TODO remove?
+	emcyCobId_ = nodeId_ + 0x80u;
 	SdoServer<CanopenDevice>::setNodeId(id);
 }
 
@@ -243,10 +313,115 @@ CanopenDevice<OD, Protocols...>::nmtState()
 }
 
 template<typename OD, typename... Protocols>
+bool
+CanopenDevice<OD, Protocols...>::isInSyncWindow()
+{
+	if (lastSyncTime_.time_since_epoch().count() == 0) return false;
+	return (modm::PreciseClock::now() - lastSyncTime_) < syncWindowDuration_;
+}
+
+template<typename OD, typename... Protocols>
+uint8_t
+CanopenDevice<OD, Protocols...>::syncCounter()
+{
+	return lastSyncCounter_;
+}
+
+template<typename OD, typename... Protocols>
+EMCYError
+CanopenDevice<OD, Protocols...>::getEMCYError()
+{
+	return emcy_;
+}
+
+template<typename OD, typename... Protocols>
+void
+CanopenDevice<OD, Protocols...>::setError(EMCYError emcy)
+{
+	emcyDue_ = true;
+	emcy_ = emcy;
+}
+
+template<typename OD, typename... Protocols>
+uint8_t&
+CanopenDevice<OD, Protocols...>::getErrorRegister()
+{
+	return errorReg_;
+}
+
+template<typename OD, typename... Protocols>
+std::array<uint8_t, 5>&
+CanopenDevice<OD, Protocols...>::getManufacturerError()
+{
+	return manufacturerError_;
+}
+
+template<typename OD, typename... Protocols>
 constexpr auto
 CanopenDevice<OD, Protocols...>::registerHandlers() -> HandlerMap<OD>
 {
 	HandlerMap<OD> handlers;
+	handlers.template setReadHandler<Address{0x1001, 0}>(+[]() { return errorReg_; });
+	handlers.template setReadHandler<Address{0x1003, 0}>(+[]() {
+		if (emcy_ != EMCYError::NoError)
+			return (uint32_t)1;
+		else
+			return (uint32_t)0;
+	});
+	handlers.template setReadHandler<Address{0x1003, 1}>(+[]() { return (uint32_t)emcy_; });
+
+	handlers.template setReadHandler<Address{0x1005, 0}>(+[]() {
+		const bool extended = ((syncCobId_ & 0x1FFFF800) != 0);
+		return (syncCobId_ & 0x1FFFFFFFu) | (extended ? 0x20000000u : 0x00000000u);
+	});
+	handlers.template setWriteHandler<Address{0x1005, 0}>(+[](uint32_t val) {
+		// Sync producing is unsupported
+		if ((val & 0x40000000) != 0) return SdoErrorCode::UnsupportedAccess;
+
+		// Check if extended flag is set correctly
+		uint32_t newId = (val & 0x1FFFFFFFu);
+		if ((newId & 0x1FFFF800) != 0 && (val & 0x20000000u) == 0)
+			return SdoErrorCode::InvalidValue;
+		syncCobId_ = newId;
+		return SdoErrorCode::NoError;
+	});
+
+	handlers.template setReadHandler<Address{0x1007, 0}>(
+		+[]() { return (uint32_t)syncWindowDuration_.count(); });
+	handlers.template setWriteHandler<Address{0x1007, 0}>(+[](uint32_t val) {
+		syncWindowDuration_ = std::chrono::microseconds(val);
+		return SdoErrorCode::NoError;
+	});
+
+	handlers.template setReadHandler<Address{0x1014, 0}>(+[]() {
+		uint32_t out = emcyCobId_ & 0x1F'FF'FF'FF;
+		if (emcyEnabled_) out |= 0x80'00'00'00;
+		if (emcyCobId_ & 0x1F'FF'F8'00) out |= 0x2F'FF'FF'FF;
+		return out;
+	});
+	handlers.template setWriteHandler<Address{0x1014, 0}>(+[](uint32_t val) {
+		if (val & 0x40'00'00'00) return SdoErrorCode::InvalidValue;
+		if ((bool)(val & 0x1F'FF'F8'00) != (bool)(val & 0x20'00'00'00))
+			return SdoErrorCode::InvalidValue;
+		emcyEnabled_ = (bool)(val & 0x80'00'00'00);
+		emcyCobId_ = val & 0x1F'FF'FF'FF;
+		return SdoErrorCode::NoError;
+	});
+
+	handlers.template setReadHandler<Address{0x1015, 0}>(
+		+[]() { return (uint16_t)(emcyInhibitTime_.count() / 100); });
+	handlers.template setWriteHandler<Address{0x1015, 0}>(+[](uint16_t val) {
+		emcyInhibitTime_ = std::chrono::microseconds(100 * val);
+		return SdoErrorCode::NoError;
+	});
+
+	handlers.template setReadHandler<Address{0x1019, 0}>(+[]() { return syncCounterOverflow_; });
+	handlers.template setWriteHandler<Address{0x1019, 0}>(+[](uint8_t val) {
+		if (val == 1 || val > 240) return SdoErrorCode::InvalidValue;
+		syncCounterOverflow_ = val;
+		return SdoErrorCode::NoError;
+	});
+
 	Heartbeat<CanopenDevice>{}.registerHandlers(handlers);
 	ReceivePdoConfigurator<CanopenDevice>{}.registerHandlers(handlers);
 	TransmitPdoConfigurator<CanopenDevice>{}.registerHandlers(handlers);

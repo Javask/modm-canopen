@@ -26,15 +26,13 @@ public:
 		map.template setWriteHandler<Address{0x1400 + pdo, 1}>(
 			+[](uint32_t cobId) { return setReceivePdoCobId(pdo, cobId); });
 
-		// Transmission type, only async supported for now
+		// Transmission type
 		map.template setReadHandler<Address{0x1400 + pdo, 2}>(
-			// 0xFF: async
-			+[]() -> uint8_t { return 0xFF; });
+			+[]() -> uint8_t { return rpdo.getTransmitMode().value; });
 		map.template setWriteHandler<Address{0x1400 + pdo, 2}>(
-			// 0xFF: async
 			+[](uint8_t transmitMode) -> SdoErrorCode {
-				return transmitMode == 0xFF ? SdoErrorCode::NoError
-											: SdoErrorCode::UnsupportedAccess;
+				return rpdo.setTransmitMode(transmitMode) ? SdoErrorCode::NoError
+														  : SdoErrorCode::UnsupportedAccess;
 			});
 	}
 
