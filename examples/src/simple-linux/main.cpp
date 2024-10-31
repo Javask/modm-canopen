@@ -18,6 +18,11 @@ struct Test
 {
 	template<typename Device, typename MessageCallback>
 	static void
+	update(MessageCallback&&)
+	{}
+
+	template<typename Device, typename MessageCallback>
+	static void
 	processMessage(const modm::can::Message&, MessageCallback&&)
 	{}
 

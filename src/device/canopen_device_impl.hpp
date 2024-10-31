@@ -226,7 +226,7 @@ CanopenDevice<OD, Protocols...>::processMessage(const modm::can::Message& messag
 				std::forward<MessageCallback>(cb));
 		}
 
-		(Protocols::template processMessage<CanopenDevice<OD, Protocols...>, MessageCallback>(
+		(Protocols::template processMessage<CanopenDevice, MessageCallback>(
 			 message, std::forward<MessageCallback>(cb)),
 		 ...);
 	}
@@ -254,6 +254,9 @@ CanopenDevice<OD, Protocols...>::update(MessageCallback&& cb)
 				if (message) { std::forward<MessageCallback>(cb)(*message); }
 			}
 		}
+		(Protocols::template update<CanopenDevice, MessageCallback>(
+			 std::forward<MessageCallback>(cb)),
+		 ...);
 	}
 }
 
