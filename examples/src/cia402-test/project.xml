@@ -1,0 +1,21 @@
+<library>
+  <repositories>
+    <repository><path>../../../../modm/repo.lb</path></repository>
+    <repository><path>../../../repo.lb</path></repository>
+  </repositories>
+  <options>
+    <option name="modm:target">hosted-linux</option>
+    <option name="modm:build:build.path">../../../build/examples/cia402-test</option>
+    <option name="modm:architecture:can:message.buffer">64</option>
+  </options>
+  <collectors>
+    <collect name="modm-canopen:common:eds_files">test.eds</collect>
+  </collectors>
+  <modules>
+    <module>modm:build:scons</module>
+    <module>modm:platform:socketcan</module>
+    <module>modm-canopen:device</module>
+    <module>modm-canopen:common:cia402</module>
+  </modules>
+</library>
+
