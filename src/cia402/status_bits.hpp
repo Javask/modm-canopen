@@ -19,12 +19,18 @@ enum class StatusBits : uint16_t
 	Busy = (1 << 8),
 	Remote = (1 << 9),
 	TargetReached = (1 << 10),
-	// InternalLimitSet = (1 << 11),
+	InternalLimitSet = (1 << 11),
+
 	// 12-13: Mode Specific
-	SpeedZero = (1 << 12),  // Velocity Profile Mode
-	// MaxSlippageError = (1 << 13), // Velocity Profile Mode(Unimplemented)
-	//  EventSet = (1 << 14),
-	AxisOn = (1 << 15),
+	SpeedZero = (1 << 12),                 // Profile Velocity Mode
+	MaxSlippageError = (1 << 13),          // Profile Velocity Mode
+	SetPointAcknowledge = (1 << 12),       // Profile Position Mode
+	MaxFollowingError = (1 << 13),         // Profile Position Mode
+	HomingAttained = (1 << 12),            // Homing Mode
+	HomingError = (1 << 13),               // Homing Mode
+	InterpolationModeActiove = (1 << 12),  // Interpolation Position Mode
+
+	// 14-15: Manufacturer defined
 };
 
 }  // namespace cia402

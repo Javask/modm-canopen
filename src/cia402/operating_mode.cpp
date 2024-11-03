@@ -13,28 +13,21 @@ operatingModeToString(OperatingMode mode)
 	{
 		case OperatingMode::Disabled:
 			return "Disabled";
-		case OperatingMode::Voltage:
-			return "Voltage";
-		case OperatingMode::Current:
-			return "Current";
-		case OperatingMode::Position:
-			return "Position";
+		case OperatingMode::ProfilePosition:
+			return "ProfilePosition";
 		case OperatingMode::Velocity:
 			return "Velocity";
-		case OperatingMode::Test:
-			return "Test";
+		case OperatingMode::ProfileVelocity:
+			return "ProfileVelocity";
+		case OperatingMode::ProfileTorque:
+			return "ProfileTorque";
+		case OperatingMode::Homing:
+			return "Homing";
+		case OperatingMode::InterpolatedPosition:
+			return "InterpolatedPosition";
+		default:
+			return "Unknown";
 	}
-	return "";  // Stop my compiler whining
-}
-
-bool
-operatingModeIsValid(int8_t value)
-{
-	return (value == int8_t(OperatingMode::Disabled)) ||
-		   (value == int8_t(OperatingMode::Voltage)) ||
-		   (value == int8_t(OperatingMode::Velocity)) ||
-		   (value == int8_t(OperatingMode::Position)) ||
-		   (value == int8_t(OperatingMode::Current)) || (value == int8_t(OperatingMode::Test));
 }
 
 }  // namespace cia402
