@@ -53,7 +53,12 @@ CanopenDevice<OD, Protocols...>::write(Address address, std::span<const uint8_t>
 	-> SdoErrorCode
 {
 	auto entry = OD::map.lookup(address);
-	if (!entry) { return SdoErrorCode::ObjectDoesNotExist; }
+	if (!entry)
+	{
+		if (address.subindex != 0 && OD::map.lookup(Address{.index = address.index, .subindex = 0}))
+			return SdoErrorCode::SubIndexDoesNotExist;
+		return SdoErrorCode::ObjectDoesNotExist;
+	}
 	if (!entry->isWritable()) { return SdoErrorCode::WriteOfReadOnlyObject; }
 
 	const auto objectSize = getDataTypeSize(entry->dataType);
@@ -86,6 +91,9 @@ CanopenDevice<OD, Protocols...>::read(Address address) -> std::variant<Value, Sd
 		auto entry = OD::map.lookup(address);
 		if (!entry)
 		{
+			if (address.subindex != 0 &&
+				OD::map.lookup(Address{.index = address.index, .subindex = 0}))
+				return SdoErrorCode::SubIndexDoesNotExist;
 			return SdoErrorCode::ObjectDoesNotExist;
 		} else if (entry->isReadable())
 		{
