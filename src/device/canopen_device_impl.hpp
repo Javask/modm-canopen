@@ -351,6 +351,12 @@ CanopenDevice<OD, Protocols...>::setError(EMCYError emcy)
 {
 	emcyDue_ = true;
 	emcy_ = emcy;
+	if (((uint16_t)emcy & 0xFF00) == (uint16_t)EMCYError::GenericCommunicationError)
+	{
+		// Handle communication error
+		// TODO implement 0x1029.1
+		if (state_ == NMTState::Operational) state_ = NMTState::PreOperational;
+	}
 }
 
 template<typename OD, typename... Protocols>
