@@ -12,6 +12,7 @@
 
 namespace modm_canopen::cia402
 {
+template<uint8_t Axis>
 class CiA402
 {
 private:

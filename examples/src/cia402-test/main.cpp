@@ -46,7 +46,7 @@ struct Test
 int
 main()
 {
-	using Device = CanopenDevice<test_OD, Test, modm_canopen::cia402::CiA402>;
+	using Device = CanopenDevice<test_OD, Test, modm_canopen::cia402::CiA402<0>>;
 	const uint8_t nodeId = 5;
 	Device::initialize(nodeId);
 

@@ -4,8 +4,9 @@
 
 namespace modm_canopen::cia402
 {
+template<uint8_t Axis>
 bool
-CiA402::isSupported(OperatingMode mode)
+CiA402<Axis>::isSupported(OperatingMode mode)
 {
 	if ((int)mode >= 0)
 		return supportedModesBitfield_ & (1 << (((int)mode) - 1));
@@ -13,28 +14,31 @@ CiA402::isSupported(OperatingMode mode)
 		return supportedModesBitfield_ & (1 << (32 - (int)mode));
 }
 
+template<uint8_t Axis>
 template<typename Device, typename MessageCallback>
 void
-CiA402::update(MessageCallback &&)
+CiA402<Axis>::update(MessageCallback &&)
 {}
 
+template<uint8_t Axis>
 template<typename Device, typename MessageCallback>
 void
-CiA402::processMessage(const modm::can::Message &, MessageCallback &&)
+CiA402<Axis>::processMessage(const modm::can::Message &, MessageCallback &&)
 {}
 
+template<uint8_t Axis>
 template<typename ObjectDictionary>
 constexpr void
-CiA402::registerHandlers(HandlerMap<ObjectDictionary> &map)
+CiA402<Axis>::registerHandlers(HandlerMap<ObjectDictionary> &map)
 {
-	CiA402Factors::registerHandlers(map);
+	CiA402Factors<Axis>::registerHandlers(map);
 
-	map.template setReadHandler<CiA402Objects::ModeOfOperation>(+[]() { return int8_t(mode_); });
+	map.template setReadHandler<CiA402Objects<Axis>::ModeOfOperation>(+[]() { return int8_t(mode_); });
 
-	map.template setReadHandler<CiA402Objects::ModeOfOperationDisplay>(
+	map.template setReadHandler<CiA402Objects<Axis>::ModeOfOperationDisplay>(
 		+[]() { return int8_t(mode_); });
 
-	map.template setWriteHandler<CiA402Objects::ModeOfOperation>(+[](int8_t value) {
+	map.template setWriteHandler<CiA402Objects<Axis>::ModeOfOperation>(+[](int8_t value) {
 		if (isSupported((OperatingMode)value))
 		{
 			auto newMode = (static_cast<OperatingMode>(value));
@@ -51,16 +55,16 @@ CiA402::registerHandlers(HandlerMap<ObjectDictionary> &map)
 		}
 	});
 
-	map.template setReadHandler<CiA402Objects::ControlWord>(+[]() { return control_.value(); });
+	map.template setReadHandler<CiA402Objects<Axis>::ControlWord>(+[]() { return control_.value(); });
 
-	map.template setWriteHandler<CiA402Objects::ControlWord>(+[](uint16_t value) {
+	map.template setWriteHandler<CiA402Objects<Axis>::ControlWord>(+[](uint16_t value) {
 		control_.update(value);
 		status_.update(control_);
 		return SdoErrorCode::NoError;
 	});
 
-	map.template setReadHandler<CiA402Objects::StatusWord>(+[]() { return status_.status(); });
-	map.template setReadHandler<CiA402Objects::SupportedDriveModes>(
+	map.template setReadHandler<CiA402Objects<Axis>::StatusWord>(+[]() { return status_.status(); });
+	map.template setReadHandler<CiA402Objects<Axis>::SupportedDriveModes>(
 		+[]() { return supportedModesBitfield_; });
 }
 }  // namespace modm_canopen::cia402
