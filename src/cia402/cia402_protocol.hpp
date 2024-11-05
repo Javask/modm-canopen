@@ -15,6 +15,7 @@ namespace modm_canopen::cia402
 template<uint8_t Axis>
 class CiA402
 {
+	static_assert(Axis < 8, "Only 8 axes per device are supported by the CiA402 standard");
 private:
 	static inline OperatingMode mode_{OperatingMode::Disabled};
 	static inline StateMachine status_{State::SwitchOnDisabled};
