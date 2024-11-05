@@ -47,7 +47,7 @@ main()
 {
 	using Device = CanopenDevice<test_OD, Test>;
 	const uint8_t nodeId = 5;
-	Device::initialize(nodeId);
+	Device::initialize(nodeId, 301);
 
 	modm::platform::SocketCan can;
 	const bool success = can.open("vcan0");

@@ -31,8 +31,9 @@ public:
 	using TransmitPdo_t = TransmitPdo<OD>;
 
 	static void
-	initialize(uint8_t nodeId)
+	initialize(uint8_t nodeId, uint32_t id)
 	{
+		deviceId_ = id;
 		setNodeId(nodeId);
 	}
 
@@ -76,6 +77,8 @@ private:
 	static constexpr HandlerMap<OD> accessHandlers = constructHandlerMap();
 
 	static inline uint8_t nodeId_{};
+
+	static inline uint32_t deviceId_{0};
 
 	static inline uint8_t syncCounterOverflow_{0};
 	static inline uint8_t lastSyncCounter_{0};

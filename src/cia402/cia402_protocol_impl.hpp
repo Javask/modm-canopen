@@ -18,7 +18,21 @@ template<uint8_t Axis>
 template<typename Device, typename MessageCallback>
 void
 CiA402<Axis>::update(MessageCallback &&)
-{}
+{
+	switch (status_.state())
+	{
+		case State::QuickStopActive:
+			// Do quickstop
+			break;
+		case State::OperationEnabled:
+			// Do OperatingMode update
+			break;
+		case State::SwitchedOn:
+			// Slow down depending on disable operation code
+			if (lastProcessedState_ == State::OperationEnabled) {}
+			break;
+	}
+}
 
 template<uint8_t Axis>
 template<typename Device, typename MessageCallback>
@@ -33,20 +47,19 @@ CiA402<Axis>::registerHandlers(HandlerMap<ObjectDictionary> &map)
 {
 	CiA402Factors<Axis>::registerHandlers(map);
 
-	map.template setReadHandler<CiA402Objects<Axis>::ModeOfOperation>(+[]() { return int8_t(mode_); });
-
-	map.template setReadHandler<CiA402Objects<Axis>::ModeOfOperationDisplay>(
-		+[]() { return int8_t(mode_); });
+	map.template setReadHandler<CiA402Objects<Axis>::ModeOfOperation>(
+		+[]() { return int8_t(demandedMode_); });
 
 	map.template setWriteHandler<CiA402Objects<Axis>::ModeOfOperation>(+[](int8_t value) {
 		if (isSupported((OperatingMode)value))
 		{
 			auto newMode = (static_cast<OperatingMode>(value));
-			if (mode_ != newMode)
+			if (demandedMode_ != newMode)
 			{
-				mode_ = newMode;
-				MODM_LOG_INFO << "Set operating mode to "
-							  << modm_canopen::cia402::operatingModeToString(mode_) << modm::endl;
+				demandedMode_ = newMode;
+				MODM_LOG_INFO << "Set demanded operating mode to "
+							  << modm_canopen::cia402::operatingModeToString(demandedMode_)
+							  << modm::endl;
 			}
 			return SdoErrorCode::NoError;
 		} else
@@ -55,16 +68,62 @@ CiA402<Axis>::registerHandlers(HandlerMap<ObjectDictionary> &map)
 		}
 	});
 
-	map.template setReadHandler<CiA402Objects<Axis>::ControlWord>(+[]() { return control_.value(); });
+	map.template setReadHandler<CiA402Objects<Axis>::ModeOfOperationDisplay>(
+		+[]() { return int8_t(displayedMode_); });
+
+	map.template setReadHandler<CiA402Objects<Axis>::ControlWord>(
+		+[]() { return status_.control(); });
 
 	map.template setWriteHandler<CiA402Objects<Axis>::ControlWord>(+[](uint16_t value) {
-		control_.update(value);
-		status_.update(control_);
+		if (!status_.update(value)) return SdoErrorCode::InvalidValue;
 		return SdoErrorCode::NoError;
 	});
 
-	map.template setReadHandler<CiA402Objects<Axis>::StatusWord>(+[]() { return status_.status(); });
+	map.template setReadHandler<CiA402Objects<Axis>::StatusWord>(
+		+[]() { return status_.status(); });
+		
 	map.template setReadHandler<CiA402Objects<Axis>::SupportedDriveModes>(
 		+[]() { return supportedModesBitfield_; });
+
+	map.template setReadHandler<CiA402Objects<Axis>::QuickStopOptionCode>(
+		+[]() { return std::to_underlying(quickStopCode_); });
+	map.template setWriteHandler<CiA402Objects<Axis>::QuickStopOptionCode>(+[](int16_t value) {
+		if (value < 0 || value > 8) return SdoErrorCode::InvalidValue;
+		quickStopCode_ = OptionCode(value);
+		return SdoErrorCode::NoError;
+	});
+
+	map.template setReadHandler<CiA402Objects<Axis>::ShutdownOptionCode>(
+		+[]() { return std::to_underlying(shutdownCode_); });
+	map.template setWriteHandler<CiA402Objects<Axis>::ShutdownOptionCode>(+[](int16_t value) {
+		if (value != 0 && value != 1) return SdoErrorCode::InvalidValue;
+		shutdownCode_ = OptionCode(value);
+		return SdoErrorCode::NoError;
+	});
+
+	map.template setReadHandler<CiA402Objects<Axis>::DisableOperationOptionCode>(
+		+[]() { return std::to_underlying(disableCode_); });
+	map.template setWriteHandler<CiA402Objects<Axis>::DisableOperationOptionCode>(
+		+[](int16_t value) {
+			if (value != 0 && value != 1) return SdoErrorCode::InvalidValue;
+			disableCode_ = OptionCode(value);
+			return SdoErrorCode::NoError;
+		});
+
+	map.template setReadHandler<CiA402Objects<Axis>::HaltOptionCode>(
+		+[]() { return std::to_underlying(haltCode_); });
+	map.template setWriteHandler<CiA402Objects<Axis>::HaltOptionCode>(+[](int16_t value) {
+		if (value < 0 || value > 4) return SdoErrorCode::InvalidValue;
+		haltCode_ = OptionCode(value);
+		return SdoErrorCode::NoError;
+	});
+
+	map.template setReadHandler<CiA402Objects<Axis>::FaultReactionOptionCode>(
+		+[]() { return std::to_underlying(faultCode_); });
+	map.template setWriteHandler<CiA402Objects<Axis>::FaultReactionOptionCode>(+[](int16_t value) {
+		if (value < 0 || value > 4) return SdoErrorCode::InvalidValue;
+		faultCode_ = OptionCode(value);
+		return SdoErrorCode::NoError;
+	});
 }
 }  // namespace modm_canopen::cia402

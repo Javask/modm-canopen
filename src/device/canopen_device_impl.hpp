@@ -372,6 +372,7 @@ constexpr auto
 CanopenDevice<OD, Protocols...>::registerHandlers() -> HandlerMap<OD>
 {
 	HandlerMap<OD> handlers;
+	handlers.template setReadHandler<Address{0x1000, 0}>(+[]() { return deviceId_; });
 	handlers.template setReadHandler<Address{0x1001, 0}>(+[]() { return errorReg_; });
 	handlers.template setReadHandler<Address{0x1003, 0}>(+[]() {
 		if (emcy_ != EMCYError::NoError)

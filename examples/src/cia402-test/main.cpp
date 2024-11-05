@@ -48,7 +48,7 @@ main()
 {
 	using Device = CanopenDevice<test_OD, Test, modm_canopen::cia402::CiA402<0>>;
 	const uint8_t nodeId = 5;
-	Device::initialize(nodeId);
+	Device::initialize(nodeId, 402);
 
 	modm::platform::SocketCan can;
 	const bool success = can.open("vcan0");
@@ -70,24 +70,8 @@ main()
 	// to trigger asynchronous PDO transmissions
 	Device::setValueChanged(Address{0x2002, 0});
 
-	modm::PeriodicTimer timer{100s};
-
 	while (true)
 	{
-		if (timer.execute())
-		{
-			if (Device::getEMCYError() != modm_canopen::EMCYError::NoError)
-			{
-				Device::getManufacturerError() = {};
-				Device::getErrorRegister() = 0;
-				Device::setError(modm_canopen::EMCYError::NoError);
-			} else
-			{
-				Device::getManufacturerError() = {0xDE, 0xAD, 0xBE, 0xEF, 0xFF};
-				Device::getErrorRegister() = 69;
-				Device::setError(modm_canopen::EMCYError::GenericError);
-			}
-		}
 		if (can.isMessageAvailable())
 		{
 			modm::can::Message message{};

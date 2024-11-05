@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
+#include <utility>
 #include "states.hpp"
-#include "command_word.hpp"
 #include "state_commands.hpp"
 #include "status_bits.hpp"
 
@@ -13,54 +13,45 @@ namespace cia402
 class StateMachine
 {
 private:
-	struct StateInfo
-	{
-		State state;
-		uint16_t mask;
-		uint16_t value;
-
-		inline bool
-		matches(uint16_t status) const
-		{
-			return (status & mask) == value;
-		}
-
-		inline uint16_t
-		apply(uint16_t status) const
-		{
-			return (status & ~mask) | (value & mask);
-		}
-	};
-
-	static inline constexpr std::array<StateInfo, 6> StateInfos{
-		StateInfo{.state{State::Fault}, .mask{0b0100'1111}, .value{0b0000'1000}},
-		StateInfo{.state{State::OperationEnabled}, .mask{0b0110'1111}, .value{0b0010'0111}},
-		StateInfo{.state{State::ReadyToSwitchOn}, .mask{0b0110'1111}, .value{0b0010'0001}},
-		StateInfo{.state{State::SwitchedOn}, .mask{0b0110'1111}, .value{0b0010'0011}},
-		StateInfo{.state{State::SwitchOnDisabled}, .mask{0b0100'1111}, .value{0b0100'0000}},
-		StateInfo{.state{State::QuickStopActive}, .mask{0b0110'1111}, .value{0b0000'0111}},
-	};
-
 	uint16_t status_;
+	uint16_t control_;
 	State state_;
+	CommandName lastCommand_;
 
 public:
 	static State
 	parseState(uint16_t val);
 
+	void
+	startFaultReaction();
+	void
+	setFaultReactionStopped();
+
 	explicit StateMachine(State initial);
 	explicit StateMachine(uint16_t raw);
 
 	bool
-	update(const CommandWord& cmdWord);
+	update(uint16_t controlWord);
 
 	bool
-	set(uint16_t value);
+	set(uint16_t statusWord);
 
 	inline uint16_t
 	status() const
 	{
-		return status_;
+		return (status_ & ~StateMask) | std::to_underlying(state_);
+	}
+
+	inline uint16_t
+	control() const
+	{
+		return control_;
+	}
+
+	inline CommandName
+	lastCommand() const
+	{
+		return lastCommand_;
 	}
 
 	inline State
@@ -73,14 +64,16 @@ public:
 	inline bool
 	isSet() const
 	{
-		return (status_ & ((uint16_t)bit)) == ((uint16_t)bit);
+		return (status() & std::to_underlying(bit)) == std::to_underlying(bit);
 	}
 
 	template<StatusBits bit>
 	inline void
 	setBit(bool value)
 	{
-		status_ = (status_ & ~(uint16_t)bit) | (value ? (uint16_t)bit : 0);
+		// Dont accidentally change state
+		static_assert(std::to_underlying(bit) & StateMask == 0);
+		status_ = (status_ & ~std::to_underlying(bit)) | (value ? std::to_underlying(bit) : 0);
 	}
 };
 

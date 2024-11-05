@@ -12,6 +12,7 @@
     <collect name="modm-canopen:common:eds_files">test.eds</collect>
   </collectors>
   <modules>
+    <module>modm:math:filter</module>
     <module>modm:build:scons</module>
     <module>modm:platform:socketcan</module>
     <module>modm-canopen:device</module>

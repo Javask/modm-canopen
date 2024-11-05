@@ -25,6 +25,8 @@ stateToString(State state)
 			return "SwitchOnDisabled";
 		case State::QuickStopActive:
 			return "QuickStopActive";
+		case State::FaultReactionActive:
+			return "FaultReactionActive";
 	}
 	return "";  // Stop my compiler whining
 }
