@@ -49,8 +49,8 @@ CanopenDevice<OD, Protocols...>::toValue(Address address, std::span<const uint8_
 
 template<typename OD, typename... Protocols>
 auto
-CanopenDevice<OD, Protocols...>::write(Address address, std::span<const uint8_t> data, int8_t size)
-	-> SdoErrorCode
+CanopenDevice<OD, Protocols...>::write(Address address, std::span<const uint8_t> data,
+									   int8_t size) -> SdoErrorCode
 {
 	auto entry = OD::map.lookup(address);
 	if (!entry)
@@ -123,6 +123,7 @@ CanopenDevice<OD, Protocols...>::handleNMTCommand(const modm::can::Message& msg)
 		return;
 	}
 
+	const auto oldState = state_;
 	NMTCommand cmd = (NMTCommand)msg.data[0];
 	switch (cmd)
 	{
@@ -141,6 +142,11 @@ CanopenDevice<OD, Protocols...>::handleNMTCommand(const modm::can::Message& msg)
 			break;
 		default:
 			break;
+	}
+
+	if (oldState != state_)
+	{
+		MODM_LOG_INFO << "NMT State changed: " << nmtStateToString(state_) << modm::endl;
 	}
 }
 

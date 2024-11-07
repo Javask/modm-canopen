@@ -4,6 +4,13 @@
 
 namespace modm_canopen::cia402
 {
+
+template<uint8_t Axis>
+void
+CiA402<Axis>::setError(){
+	status_.startFaultReaction();
+}
+
 template<uint8_t Axis>
 bool
 CiA402<Axis>::isSupported(OperatingMode mode)
@@ -19,6 +26,10 @@ template<typename Device, typename MessageCallback>
 void
 CiA402<Axis>::update(MessageCallback &&)
 {
+	if(status_.wasChanged()){
+		MODM_LOG_DEBUG << "Status was changed!" << modm::endl;
+		Device::setValueChanged(CiA402Objects<Axis>::StatusWord);
+	}
 	switch (status_.state())
 	{
 		case State::QuickStopActive:
@@ -27,9 +38,23 @@ CiA402<Axis>::update(MessageCallback &&)
 		case State::OperationEnabled:
 			// Do OperatingMode update
 			break;
-		case State::SwitchedOn:
+		case State::DisableReactionActive:
 			// Slow down depending on disable operation code
-			if (lastProcessedState_ == State::OperationEnabled) {}
+			status_.setReactionDone();
+			break;
+		case State::ShutdownReactionActive:
+			// Slow down depending on shutdown operation code
+			status_.setReactionDone();
+			break;
+		case State::HaltReactionActive:
+			// Slow down depending on halt operation code
+			//status_.setReactionDone();
+			break;
+		case State::FaultReactionActive:
+			// Slow down depending on fault operation code
+			status_.setReactionDone();
+			break;
+		default:
 			break;
 	}
 }
@@ -81,7 +106,7 @@ CiA402<Axis>::registerHandlers(HandlerMap<ObjectDictionary> &map)
 
 	map.template setReadHandler<CiA402Objects<Axis>::StatusWord>(
 		+[]() { return status_.status(); });
-		
+
 	map.template setReadHandler<CiA402Objects<Axis>::SupportedDriveModes>(
 		+[]() { return supportedModesBitfield_; });
 

@@ -70,8 +70,13 @@ main()
 	// to trigger asynchronous PDO transmissions
 	Device::setValueChanged(Address{0x2002, 0});
 
+	modm::PeriodicTimer timer{100s};
+
 	while (true)
 	{
+		if(timer.execute()){
+			modm_canopen::cia402::CiA402<0>::setError();
+		}
 		if (can.isMessageAvailable())
 		{
 			modm::can::Message message{};

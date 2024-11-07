@@ -7,14 +7,22 @@ namespace modm_canopen
 {
 namespace cia402
 {
-constexpr std::array<Command, 7> StateCommands{
+constexpr std::array<Command, 8> StateCommands{
 	Command{
 		.name = CommandName::Shutdown,
 		.bitMask{0b1000'0111},
 		.value{0b0000'0110},
 		.changing{0b0000'0000},
 		.destination = State::ReadyToSwitchOn,
-		.availableIn{State::SwitchOnDisabled, State::SwitchedOn, State::OperationEnabled},
+		.availableIn{State::SwitchOnDisabled, State::SwitchedOn, State::Invalid},
+	},
+	Command{
+		.name = CommandName::Shutdown,
+		.bitMask{0b1000'0111},
+		.value{0b0000'0110},
+		.changing{0b0000'0000},
+		.destination = State::ShutdownReactionActive,
+		.availableIn{State::OperationEnabled, State::Invalid, State::Invalid},
 	},
 	Command{
 		.name = CommandName::SwitchOn,
@@ -38,7 +46,7 @@ constexpr std::array<Command, 7> StateCommands{
 		.bitMask{0b1000'1111},
 		.value{0b0000'0111},
 		.changing{0b0000'0000},
-		.destination = State::SwitchedOn,
+		.destination = State::DisableReactionActive,
 		.availableIn{State::OperationEnabled, State::Invalid, State::Invalid},
 	},
 	Command{

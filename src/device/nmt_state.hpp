@@ -9,4 +9,6 @@ enum class NMTState : uint8_t
 	PreOperational = 127,
 	Operational = 5,
 };
+
+const char* nmtStateToString(NMTState state);
 }

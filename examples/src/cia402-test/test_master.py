@@ -1,4 +1,5 @@
 import canopen
+import time
 from canopen.profiles.p402 import BaseNode402
 
 node = BaseNode402(5, 'test.eds')
@@ -20,22 +21,10 @@ network.sync.start(10)
 
 network.nmt.state = "PRE-OPERATIONAL"
 
-
-
 def on_emcy(err):
     print("EMCY Received: {}".format(err))
-node.tpdo.read()
-# Re-map TxPDO1
-node.tpdo[1].clear()
-node.tpdo[1].add_variable("Test 1")
-node.tpdo[1].add_variable("Test 2")
-node.tpdo[1].trans_type = 0xFF
-node.tpdo[1].event_timer = 500
-node.tpdo[1].enabled = True
-
-# Save new PDO configuration to node
-node.tpdo.save()
 node.emcy.add_callback(on_emcy)
+
 
 
 # Send a heartbeat
@@ -43,6 +32,24 @@ heartbeat = node.sdo[0x1017]
 heartbeat.raw = 1000
 
 network.nmt.state = "OPERATIONAL"
+
+node.tpdo.read()
+node.tpdo[1].clear()
+node.tpdo[1].add_variable("Status Word")
+node.tpdo[1].add_variable("Mode of Operation Display")
+node.tpdo[1].trans_type = 0xFF
+node.tpdo[1].event_timer = 100
+node.tpdo[1].enabled = True
+node.tpdo.save()
+
+
+node.rpdo.read()
+node.rpdo[1].clear()
+node.rpdo[1].add_variable("Control Word")
+node.rpdo[1].add_variable("Mode of Operation")
+node.rpdo[1].trans_type = 0xFF
+node.rpdo[1].enabled = True
+node.rpdo.save()
 
 # Wait for heartbeat and verify state
 node.nmt.wait_for_heartbeat()
@@ -58,11 +65,15 @@ node.state = "OPERATION ENABLED"
 #node.nmt.start_node_guarding(0.25)
 node.op_mode = "PROFILED POSITION"
 
-while True:
-    print(node.op_mode)
-    if node.tpdo[1].wait_for_reception() is not None:
-        print("TPDO1 received")
-        print("\tTest value 1:", node.tpdo[1]["Test 1"].raw)
-        print("\tTest value 2:", node.tpdo[1]["Test 2"].raw)
-    else:
-        print("Timed out")
+time.sleep(1)
+
+control = node.sdo[0x6040]
+control.raw |= 0x0100
+
+time.sleep(5)
+
+node.state = "SWITCHED ON"
+
+time.sleep(1)
+
+node.state = "OPERATION ENABLED"

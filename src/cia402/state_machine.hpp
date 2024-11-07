@@ -1,10 +1,10 @@
-#pragma once
+#ifndef CANOPEN_STATE_MACHINE_HPP
+#define CANOPEN_STATE_MACHINE_HPP
 #include <cstdint>
 #include <utility>
 #include "states.hpp"
 #include "state_commands.hpp"
 #include "status_bits.hpp"
-
 namespace modm_canopen
 {
 namespace cia402
@@ -17,6 +17,7 @@ private:
 	uint16_t control_;
 	State state_;
 	CommandName lastCommand_;
+	bool changed_;
 
 public:
 	static State
@@ -24,8 +25,9 @@ public:
 
 	void
 	startFaultReaction();
+
 	void
-	setFaultReactionStopped();
+	setReactionDone();
 
 	explicit StateMachine(State initial);
 	explicit StateMachine(uint16_t raw);
@@ -36,10 +38,13 @@ public:
 	bool
 	set(uint16_t statusWord);
 
+	bool 
+	wasChanged();
+
 	inline uint16_t
 	status() const
 	{
-		return (status_ & ~StateMask) | std::to_underlying(state_);
+		return (status_ & ~StateMask) | (std::to_underlying(state_) & StateMask);
 	}
 
 	inline uint16_t
@@ -79,3 +84,5 @@ public:
 
 }  // namespace cia402
 }  // namespace modm_canopen
+
+#endif

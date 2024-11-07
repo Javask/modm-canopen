@@ -69,7 +69,7 @@ main()
 	// to trigger asynchronous PDO transmissions
 	Device::setValueChanged(Address{0x2002, 0});
 
-	modm::PeriodicTimer timer{100s};
+	modm::PeriodicTimer timer{10s};
 
 	while (true)
 	{

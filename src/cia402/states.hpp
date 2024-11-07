@@ -14,8 +14,11 @@ enum class State : uint16_t
 	Invalid = 0x0000,
 	SwitchOnDisabled = 0x0040,
 	ReadyToSwitchOn = 0x0021,
+	ShutdownReactionActive = 0x1021,  // Internal
 	SwitchedOn = 0x0023,
+	DisableReactionActive = 0x1023,  // Internal
 	OperationEnabled = 0x0027,
+	HaltReactionActive = 0x1027,  // Internal
 	QuickStopActive = 0x0007,
 	FaultReactionActive = 0x000F,
 	Fault = 0x0008,

@@ -97,6 +97,7 @@ public:
 			} else
 			{
 				lastHeartbeatTime_ = modm::Clock::now();
+				heartbeatMissed_ = false;
 			}
 		}
 	}

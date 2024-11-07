@@ -1,20 +1,39 @@
 #include "state_machine.hpp"
+#include "command_bits.hpp"
 #include <modm/debug/logger.hpp>
 namespace modm_canopen
 {
 namespace cia402
 {
+
 StateMachine::StateMachine(State initial) : status_{0}, state_{initial} {}
 
 void
 StateMachine::startFaultReaction()
 {
+	MODM_LOG_INFO << "Changed state from " << stateToString(state_) << " to "
+				  << stateToString(State::FaultReactionActive) << modm::endl;
 	state_ = State::FaultReactionActive;
 }
+
 void
-StateMachine::setFaultReactionStopped()
+StateMachine::setReactionDone()
 {
-	if (state_ == State::FaultReactionActive) { state_ = State::Fault; }
+	State destination = state_;
+	if (state_ == State::FaultReactionActive)
+	{
+		destination = State::Fault;
+	} else
+	{
+		// Move from all internal state to their neighbour
+		destination = (State)((uint16_t)state_ & StateMask);
+	}
+	if (destination != state_)
+	{
+		MODM_LOG_INFO << "Changed state from " << stateToString(state_) << " to "
+					  << stateToString(destination) << modm::endl;
+		state_ = destination;
+	}
 }
 
 StateMachine::StateMachine(uint16_t raw)
@@ -51,15 +70,23 @@ StateMachine::parseState(uint16_t val)
 }
 
 bool
+available(const Command& s, State state_)
+{
+	state_ = (State)((uint16_t)state_ & StateMask);
+	return s.availableIn[0] == state_ || s.availableIn[1] == state_ || s.availableIn[2] == state_;
+}
+
+bool
 StateMachine::update(uint16_t controlWord)
 {
-
+	if (control_ == controlWord) return true;
+	auto oldControlWord = control_;
+	control_ = controlWord;
 	for (auto& s : StateCommands)
 	{
-		if (s.matches(controlWord, control_))
+		if (s.matches(controlWord, oldControlWord))
 		{
-			if (s.availableIn[0] == state_ || s.availableIn[1] == state_ ||
-				s.availableIn[2] == state_)
+			if (available(s, state_))
 			{
 				if (s.destination != State::Invalid)
 				{
@@ -72,13 +99,25 @@ StateMachine::update(uint16_t controlWord)
 									  << stateToString(s.destination) << modm::endl;
 					}
 					state_ = s.destination;
-					control_ = controlWord;
 					return true;
 				}
 			}
 		}
 	}
-	return false;
+
+	if ((oldControlWord & StateMask) != (controlWord & StateMask)) return false;
+
+	if ((std::to_underlying(CommandBits::Halt) & controlWord) != 0 &&
+		(std::to_underlying(CommandBits::Halt) & oldControlWord) == 0)
+	{
+		if (state_ == State::OperationEnabled)
+		{
+			MODM_LOG_INFO << "Changed state from " << stateToString(state_) << " to "
+						  << stateToString(State::HaltReactionActive) << modm::endl;
+			state_ = State::HaltReactionActive;
+		}
+	}
+	return true;
 }
 
 bool
@@ -89,6 +128,14 @@ StateMachine::set(uint16_t value)
 	status_ = value & ~StateMask;
 	state_ = s;
 	return true;
+}
+
+bool
+StateMachine::wasChanged()
+{
+	auto ret = changed_;
+	changed_ = false;
+	return ret;
 }
 
 }  // namespace cia402

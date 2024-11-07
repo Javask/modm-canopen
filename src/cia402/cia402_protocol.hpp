@@ -56,11 +56,11 @@ public:
 		MotorState state;
 		ControlMode mode;
 		union {
-			int32_t torque;   // ticks/s^2
-			int32_t velocity; // ticks/s
-			int32_t position; // ticks
+			int32_t torque;    // ticks/s^2
+			int32_t velocity;  // ticks/s
+			int32_t position;  // ticks
 		} demand;
-		uint16_t currentLimit; // ma
+		uint16_t currentLimit;  // ma
 	};
 
 	struct ControlValues

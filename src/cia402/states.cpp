@@ -27,6 +27,12 @@ stateToString(State state)
 			return "QuickStopActive";
 		case State::FaultReactionActive:
 			return "FaultReactionActive";
+		case State::HaltReactionActive:
+			return "HaltReactionActive";
+		case State::DisableReactionActive:
+			return "DisableReactionActive";
+		case State::ShutdownReactionActive:
+			return "ShutdownReactionActive";
 	}
 	return "";  // Stop my compiler whining
 }
