@@ -6,6 +6,7 @@
 #include "operating_mode.hpp"
 #include "state_machine.hpp"
 #include "option_code.hpp"
+#include "profile_type.hpp"
 #include "factors.hpp"
 #include "../sdo_error.hpp"
 #include <cstdint>
@@ -29,7 +30,7 @@ public:
 	{
 		Velocity,
 		Voltage,
-		Current,
+		Torque,
 		Position,
 		None,
 	};
@@ -82,10 +83,47 @@ private:
 	static inline OptionCode haltCode_{OptionCode::SlowDownWithRamp};
 	static inline OptionCode faultCode_{OptionCode::SlowDownWithQuickStopRamp};
 
+	static inline void
+	handleOptionCode(const OptionCode& code);
+
+	static inline uint16_t maxCurrentRatio_{0};    // [0,1000]*motorRatedCurrent_/1000
+	static inline uint32_t motorRatedCurrent_{0};  // ma
+	static inline int32_t
+	getMaxCurrent();  // ma
+
+	static inline uint16_t maxTorqueRatio_{0};    // [0,1000]*motorRatedTorque_/1000
+	static inline int16_t targetTorqueRatio_{0};  // [-1000,1000]*motorRatedTorque_/1000
+	static inline int16_t torqueDemandRatio_{0};  // [-1000,1000]*motorRatedTorque_/1000
+	static inline uint32_t motorRatedTorque_{0};  // mNm
+	static inline uint32_t torqueSlope_{0};       // [0,1000]*motorRatedTorque_/1000 * 1/s
+	static inline ProfileType torqueProfile_{ProfileType::LinearRamp};
+
+	static inline int32_t velocityDemand_{0};
+	static inline uint16_t velocityWindow_{0};
+	static inline uint16_t velocityWindowTime_{0};
+	static inline uint16_t velocityThreshold_{0};
+	static inline uint16_t velocityThresholdTime_{0};
+	static inline int32_t targetVelocity_{0};
+	static inline int32_t maxSlippage_{0};
+	static inline uint32_t maxProfileVelocity_{0};
+	static inline uint32_t maxMotorSpeed_{0};
+	static inline uint32_t maxAcceleration_{0};
+	static inline uint32_t maxDeceleration_{0};
+	static inline uint32_t profileAcceleration_{0};
+	static inline uint32_t profileDeceleration_{0};
+	static inline uint32_t quickStopDeceleration_{0};
+	static inline ProfileType motionProfile_{ProfileType::LinearRamp};
+
+	static void
+	profileVelocityUpdate(uint32_t deceleration, uint32_t acceleration, int32_t target);
+
 	static constexpr uint32_t supportedModesBitfield_ = 0b1110'0000'0000'0000'0000'0000'0110'1111;
 	static inline bool
 	isSupported(OperatingMode mode);
 
+	static inline modm::PreciseClock::time_point lastUpdateTime_{};
+	static inline modm::PreciseClock::duration lastTimestep_{};
+	static inline Inputs inputs_{};
 	static inline Outputs outputs_{};
 
 public:

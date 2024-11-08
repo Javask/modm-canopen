@@ -7,7 +7,8 @@ namespace modm_canopen::cia402
 
 template<uint8_t Axis>
 void
-CiA402<Axis>::setError(){
+CiA402<Axis>::setError()
+{
 	status_.startFaultReaction();
 }
 
@@ -22,11 +23,81 @@ CiA402<Axis>::isSupported(OperatingMode mode)
 }
 
 template<uint8_t Axis>
+void
+CiA402<Axis>::profileVelocityUpdate(uint32_t deceleration, uint32_t acceleration, int32_t target)
+{
+	//TODO
+}
+
+template<uint8_t Axis>
+void
+CiA402<Axis>::handleOptionCode(const OptionCode &code)
+{
+	switch (code)
+	{
+		case OptionCode::DisableDrive:
+			outputs_.state = MotorState::Idle;
+			outputs_.mode = ControlMode::None;
+			status_.setReactionDone();
+			break;
+		case OptionCode::SlowDownWithQuickStopRamp:
+			if (inputs_.velocity != 0)
+			{
+				profileVelocityUpdate(quickStopDeceleration_, quickStopDeceleration_, 0);
+			} else
+			{
+				outputs_.state = MotorState::Idle;
+				outputs_.mode = ControlMode::None;
+				status_.setReactionDone();
+			}
+			break;
+		case OptionCode::SlowDownWithQuickStopRampAndStay:
+			if (inputs_.velocity != 0)
+			{
+				profileVelocityUpdate(quickStopDeceleration_, quickStopDeceleration_, 0);
+			} else
+			{
+				outputs_.state = MotorState::Idle;
+				outputs_.mode = ControlMode::None;
+			}
+			break;
+		case OptionCode::SlowDownWithRamp:
+			if (inputs_.velocity != 0)
+			{
+				profileVelocityUpdate(quickStopDeceleration_, quickStopDeceleration_, 0);
+			} else
+			{
+				outputs_.state = MotorState::Idle;
+				outputs_.mode = ControlMode::None;
+			}
+			break;
+		case OptionCode::SlowDownWithRampAndStay:
+			if (inputs_.velocity != 0)
+			{
+				profileVelocityUpdate(quickStopDeceleration_, quickStopDeceleration_, 0);
+			} else
+			{
+				outputs_.state = MotorState::Idle;
+				outputs_.mode = ControlMode::None;
+				status_.setReactionDone();
+			}
+			break;
+		default:
+			break;
+	}
+}
+
+template<uint8_t Axis>
 template<typename Device, typename MessageCallback>
 void
 CiA402<Axis>::update(MessageCallback &&)
 {
-	if(status_.wasChanged()){
+	const auto now = modm::PreciseClock::now();
+	if (lastUpdateTime_.time_since_epoch().count() != 0) { lastTimestep_ = now - lastUpdateTime_; }
+	lastUpdateTime_ = now;
+
+	if (status_.wasChanged())
+	{
 		MODM_LOG_DEBUG << "Status was changed!" << modm::endl;
 		Device::setValueChanged(CiA402Objects<Axis>::StatusWord);
 	}
@@ -34,25 +105,28 @@ CiA402<Axis>::update(MessageCallback &&)
 	{
 		case State::QuickStopActive:
 			// Do quickstop
+			handleOptionCode(quickStopCode_);
 			break;
 		case State::OperationEnabled:
 			// Do OperatingMode update
 			break;
 		case State::DisableReactionActive:
 			// Slow down depending on disable operation code
-			status_.setReactionDone();
+			handleOptionCode(disableCode_);
 			break;
 		case State::ShutdownReactionActive:
 			// Slow down depending on shutdown operation code
-			status_.setReactionDone();
+			handleOptionCode(shutdownCode_);
 			break;
 		case State::HaltReactionActive:
 			// Slow down depending on halt operation code
-			//status_.setReactionDone();
+			// Unsure if we should exit this state after we are done
+			// But since its easier we wont
+			handleOptionCode(haltCode_);
 			break;
 		case State::FaultReactionActive:
 			// Slow down depending on fault operation code
-			status_.setReactionDone();
+			handleOptionCode(faultCode_);
 			break;
 		default:
 			break;
@@ -113,7 +187,7 @@ CiA402<Axis>::registerHandlers(HandlerMap<ObjectDictionary> &map)
 	map.template setReadHandler<CiA402Objects<Axis>::QuickStopOptionCode>(
 		+[]() { return std::to_underlying(quickStopCode_); });
 	map.template setWriteHandler<CiA402Objects<Axis>::QuickStopOptionCode>(+[](int16_t value) {
-		if (value < 0 || value > 8) return SdoErrorCode::InvalidValue;
+		if (isValidOptionCode((OptionCode)value)) return SdoErrorCode::InvalidValue;
 		quickStopCode_ = OptionCode(value);
 		return SdoErrorCode::NoError;
 	});
@@ -121,7 +195,9 @@ CiA402<Axis>::registerHandlers(HandlerMap<ObjectDictionary> &map)
 	map.template setReadHandler<CiA402Objects<Axis>::ShutdownOptionCode>(
 		+[]() { return std::to_underlying(shutdownCode_); });
 	map.template setWriteHandler<CiA402Objects<Axis>::ShutdownOptionCode>(+[](int16_t value) {
-		if (value != 0 && value != 1) return SdoErrorCode::InvalidValue;
+		if (value != (int16_t)OptionCode::DisableDrive &&
+			value != (int16_t)OptionCode::SlowDownWithRamp)
+			return SdoErrorCode::InvalidValue;
 		shutdownCode_ = OptionCode(value);
 		return SdoErrorCode::NoError;
 	});
@@ -130,7 +206,9 @@ CiA402<Axis>::registerHandlers(HandlerMap<ObjectDictionary> &map)
 		+[]() { return std::to_underlying(disableCode_); });
 	map.template setWriteHandler<CiA402Objects<Axis>::DisableOperationOptionCode>(
 		+[](int16_t value) {
-			if (value != 0 && value != 1) return SdoErrorCode::InvalidValue;
+			if (value != (int16_t)OptionCode::DisableDrive &&
+				value != (int16_t)OptionCode::SlowDownWithRamp)
+				return SdoErrorCode::InvalidValue;
 			disableCode_ = OptionCode(value);
 			return SdoErrorCode::NoError;
 		});
@@ -138,7 +216,10 @@ CiA402<Axis>::registerHandlers(HandlerMap<ObjectDictionary> &map)
 	map.template setReadHandler<CiA402Objects<Axis>::HaltOptionCode>(
 		+[]() { return std::to_underlying(haltCode_); });
 	map.template setWriteHandler<CiA402Objects<Axis>::HaltOptionCode>(+[](int16_t value) {
-		if (value < 0 || value > 4) return SdoErrorCode::InvalidValue;
+		if (value != (int16_t)OptionCode::DisableDrive &&
+			value != (int16_t)OptionCode::SlowDownWithRamp &&
+			value != (int16_t)OptionCode::SlowDownWithQuickStopRamp)
+			return SdoErrorCode::InvalidValue;
 		haltCode_ = OptionCode(value);
 		return SdoErrorCode::NoError;
 	});
@@ -146,7 +227,10 @@ CiA402<Axis>::registerHandlers(HandlerMap<ObjectDictionary> &map)
 	map.template setReadHandler<CiA402Objects<Axis>::FaultReactionOptionCode>(
 		+[]() { return std::to_underlying(faultCode_); });
 	map.template setWriteHandler<CiA402Objects<Axis>::FaultReactionOptionCode>(+[](int16_t value) {
-		if (value < 0 || value > 4) return SdoErrorCode::InvalidValue;
+		if (value != (int16_t)OptionCode::DisableDrive &&
+			value != (int16_t)OptionCode::SlowDownWithRamp &&
+			value != (int16_t)OptionCode::SlowDownWithQuickStopRamp)
+			return SdoErrorCode::InvalidValue;
 		faultCode_ = OptionCode(value);
 		return SdoErrorCode::NoError;
 	});

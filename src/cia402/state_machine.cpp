@@ -23,6 +23,9 @@ StateMachine::setReactionDone()
 	if (state_ == State::FaultReactionActive)
 	{
 		destination = State::Fault;
+	} else if (state_ == State::QuickStopActive)
+	{
+		destination = State::SwitchOnDisabled;
 	} else
 	{
 		// Move from all internal state to their neighbour
