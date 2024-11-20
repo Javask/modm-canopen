@@ -16,19 +16,20 @@ enum class StatusBits : uint16_t
 	NotCurrentlyQuickStopping = (1 << 5),
 	SwitchOnDisabled = (1 << 6),
 	Warning = (1 << 7),
-	Busy = (1 << 8),
+	Busy = (1 << 8),  // Also means desync in CS modes
 	Remote = (1 << 9),
 	TargetReached = (1 << 10),
 	InternalLimitSet = (1 << 11),
 
 	// 12-13: Mode Specific
-	SpeedZero = (1 << 12),                 // Profile Velocity Mode
-	MaxSlippageError = (1 << 13),          // Profile Velocity Mode
-	SetPointAcknowledge = (1 << 12),       // Profile Position Mode
-	MaxFollowingError = (1 << 13),         // Profile Position Mode
-	HomingAttained = (1 << 12),            // Homing Mode
-	HomingError = (1 << 13),               // Homing Mode
-	InterpolationModeActiove = (1 << 12),  // Interpolation Position Mode
+	SpeedZero = (1 << 12),                // Profile Velocity Mode
+	MaxSlippageError = (1 << 13),         // Profile Velocity Mode / CSV
+	TargetIgnored = (1 << 12),            // All cyclic synchronous modes
+	SetPointAcknowledge = (1 << 12),      // Profile Position Mode
+	MaxFollowingError = (1 << 13),        // Profile Position Mode
+	HomingAttained = (1 << 12),           // Homing Mode
+	HomingError = (1 << 13),              // Homing Mode
+	InterpolationModeActive = (1 << 12),  // Interpolation Position Mode
 
 	// 14-15: Manufacturer defined
 };

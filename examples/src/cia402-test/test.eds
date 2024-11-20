@@ -46,9 +46,10 @@ Dummy0007=0
 Lines=0
 
 [MandatoryObjects]
-SupportedObjects=2
+SupportedObjects=3
 1=0x1000
 2=0x1001
+3=0x1018
 
 [1000]
 ParameterName=Device type
@@ -1646,7 +1647,12 @@ PDOMapping=1
 DefaultValue=0
 
 
+; TODO 60C2.0 60C2.1 Interpolation Time Period 
+; TODO 607B Position Range Limit
+; TODO 607D Software position Limit
+; TODO 6086 Motion Profile type
 ; 
+;
 [6062]
 ParameterName=Position demand value
 ObjectType=0x7

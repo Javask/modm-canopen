@@ -1,7 +1,7 @@
 #ifndef CANOPEN_CANOPEN_DEVICE_HPP
 #error "Do not include this file directly, use canopen_device.hpp instead"
 #endif
-#include "nmt_command.hpp"
+#include "../nmt_command.hpp"
 namespace modm_canopen
 {
 
@@ -384,7 +384,7 @@ constexpr auto
 CanopenDevice<OD, Protocols...>::registerHandlers() -> HandlerMap<OD>
 {
 	HandlerMap<OD> handlers;
-	handlers.template setReadHandler<Address{0x1000, 0}>(+[]() { return deviceId_; });
+	handlers.template setReadHandler<Address{0x1000, 0}>(+[]() { return deviceId_.deviceType_; });
 	handlers.template setReadHandler<Address{0x1001, 0}>(+[]() { return errorReg_; });
 	handlers.template setReadHandler<Address{0x1003, 0}>(+[]() {
 		if (emcy_ != EMCYError::NoError)
@@ -438,6 +438,12 @@ CanopenDevice<OD, Protocols...>::registerHandlers() -> HandlerMap<OD>
 		emcyInhibitTime_ = std::chrono::microseconds(100 * val);
 		return SdoErrorCode::NoError;
 	});
+
+	handlers.template setReadHandler<Address{0x1018, 0}>(+[]() { return (uint8_t)4; });
+	handlers.template setReadHandler<Address{0x1018, 1}>(+[]() { return deviceId_.vendorId_; });
+	handlers.template setReadHandler<Address{0x1018, 2}>(+[]() { return deviceId_.productCode_; });
+	handlers.template setReadHandler<Address{0x1018, 3}>(+[]() { return deviceId_.revisionId_; });
+	handlers.template setReadHandler<Address{0x1018, 4}>(+[]() { return deviceId_.serialNumber_; });
 
 	handlers.template setReadHandler<Address{0x1019, 0}>(+[]() { return syncCounterOverflow_; });
 	handlers.template setWriteHandler<Address{0x1019, 0}>(+[](uint8_t val) {

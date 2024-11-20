@@ -14,6 +14,9 @@ enum OperatingMode : int8_t
 	ProfileTorque = 4,
 	Homing = 6,
 	InterpolatedPosition = 7,
+	CyclicSynchronousPosition = 8,
+	CyclicSynchronousVelocity = 9,
+	CyclicSynchronousTorque = 10,
 };
 
 const char*

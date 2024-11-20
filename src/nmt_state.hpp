@@ -10,5 +10,6 @@ enum class NMTState : uint8_t
 	Operational = 5,
 };
 
-const char* nmtStateToString(NMTState state);
-}
+const char*
+nmtStateToString(NMTState state);
+}  // namespace modm_canopen

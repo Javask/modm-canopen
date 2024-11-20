@@ -4,9 +4,9 @@
 #include <array>
 #include <span>
 #include <optional>
-#include "nmt_state.hpp"
 #include "handler_map.hpp"
 
+#include "../nmt_state.hpp"
 #include "../object_dictionary.hpp"
 #include "../receive_pdo.hpp"
 #include "../emcy_error.hpp"
@@ -15,6 +15,7 @@
 #include "../transmit_pdo.hpp"
 #include "sdo_server.hpp"
 #include "heartbeat.hpp"
+#include "identity.hpp"
 
 namespace modm_canopen
 {
@@ -31,7 +32,7 @@ public:
 	using TransmitPdo_t = TransmitPdo<OD>;
 
 	static void
-	initialize(uint8_t nodeId, uint32_t id)
+	initialize(uint8_t nodeId, const Identity& id)
 	{
 		deviceId_ = id;
 		setNodeId(nodeId);
@@ -78,7 +79,7 @@ private:
 
 	static inline uint8_t nodeId_{};
 
-	static inline uint32_t deviceId_{0};
+	static inline Identity deviceId_{};
 
 	static inline uint8_t syncCounterOverflow_{0};
 	static inline uint8_t lastSyncCounter_{0};

@@ -48,7 +48,12 @@ main()
 {
 	using Device = CanopenDevice<test_OD, Test, modm_canopen::cia402::CiA402<0>>;
 	const uint8_t nodeId = 5;
-	Device::initialize(nodeId, 402);
+
+	Device::initialize(nodeId, modm_canopen::Identity{.deviceType_ = 402,
+													  .vendorId_ = 0xdeadbeef,
+													  .productCode_ = 0,
+													  .revisionId_ = 1,
+													  .serialNumber_ = 1});
 
 	modm::platform::SocketCan can;
 	const bool success = can.open("vcan0");

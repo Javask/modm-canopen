@@ -46,7 +46,7 @@ Dummy0007=0
 Lines=0
 
 [MandatoryObjects]
-SupportedObjects=10
+SupportedObjects=11
 1=0x1000
 2=0x1001
 3=0x1003
@@ -56,7 +56,8 @@ SupportedObjects=10
 7=0x1015
 8=0x1016
 9=0x1017
-10=0x1019
+10=0x1018
+11=0x1019
 
 [1000]
 ParameterName=Device type

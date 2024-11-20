@@ -25,6 +25,12 @@ operatingModeToString(OperatingMode mode)
 			return "Homing";
 		case OperatingMode::InterpolatedPosition:
 			return "InterpolatedPosition";
+		case OperatingMode::CyclicSynchronousPosition:
+			return "CyclicSynchronousPosition";
+		case OperatingMode::CyclicSynchronousVelocity:
+			return "CyclicSynchronousVelocity";
+		case OperatingMode::CyclicSynchronousTorque:
+			return "CyclicSynchronousTorque";
 		default:
 			return "Unknown";
 	}
