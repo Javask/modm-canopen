@@ -194,7 +194,9 @@ CanopenMaster<Devices...>::processMessage(const modm::can::Message &message, Mes
 		for (auto &pair : devices_)
 		{
 			std::visit(overloaded{[](std::monostate) {},
-								  [&message](auto &&arg) { arg->processMessage(message); }},
+								  [&message](auto &&arg) {
+									  arg->processMessage(isInSyncWindow(), message);
+								  }},
 					   pair.second);
 		}
 	}
@@ -210,38 +212,51 @@ CanopenMaster<Devices...>::update(MessageCallback &&cb)
 		std::unique_lock lock(devicesMutex_);
 		for (auto &pair : devices_)
 		{
-			std::visit(
-				overloaded{[](std::monostate) {},
-						   [&cb](auto &&arg) { arg->update(std::forward<MessageCallback>(cb)); }},
-				pair.second);
+			std::visit(overloaded{[](std::monostate) {},
+								  [&cb](auto &&arg) {
+									  arg->update(isInSyncWindow(),
+												  std::forward<MessageCallback>(cb));
+								  }},
+					   pair.second);
 		}
 	}
+
 	SdoClient_t::update(cb);
 
-	std::unique_lock lock(heartbeatTimerMutex_);
-	if (heartBeatTimer_.execute()) { sendHeartbeat(std::forward<MessageCallback>(cb)); }
+	{
+		std::unique_lock lock(syncTimerMutex_);
+		if (syncTimer_.execute()) { sendSync(std::forward<MessageCallback>(cb)); }
+	}
+}
+
+template<typename... Devices>
+bool
+CanopenMaster<Devices...>::isInSyncWindow()
+{
+	std::unique_lock lock(syncTimerMutex_);
+	if (lastSyncTime_.time_since_epoch().count() == 0) return false;
+	const auto now = modm::PreciseClock::now();
+	return (now - lastSyncTime_ < syncWindowDuration_);
 }
 
 template<typename... Devices>
 template<typename MessageCallback>
 void
-CanopenMaster<Devices...>::sendHeartbeat(MessageCallback &&sendMessage)
+CanopenMaster<Devices...>::sendSync(MessageCallback &&sendMessage)
 {
-	const uint8_t data = 0x5;
-	const modm::can::Message msg(0x700 + masterId_, 1, &data, false);
-	sendMessage(msg);
-}
-
-template<typename... Devices>
-template<typename MessageCallback>
-void
-CanopenMaster<Devices...>::setHeartbeatTimer(modm::Clock::duration duration,
-											 MessageCallback &&sendMessage)
-{
-
-	std::unique_lock lock(heartbeatTimerMutex_);
-	heartBeatTimer_ = modm::PeriodicTimer(duration);
-	sendHeartbeat(std::forward<MessageCallback>(sendMessage));
+	if (syncCounterOverflow_ != 0)
+	{
+		lastSyncCounter_++;
+		if (lastSyncCounter_ >= syncCounterOverflow_) { lastSyncCounter_ = 0; }
+		const modm::can::Message msg(syncCobId_, 1, &lastSyncCounter_, false);
+		sendMessage(msg);
+	}
+	else{
+		modm::can::Message msg(syncCobId_, 0);
+		msg.setExtended(false);
+		sendMessage(msg);
+	}
+	lastSyncTime_ = modm::PreciseClock::now();
 }
 
 template<typename... Devices>

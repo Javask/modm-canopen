@@ -31,9 +31,9 @@ public:
 	using ReceivePdo_t = ReceivePdo<ObjectDictionary>;
 	using TransmitPdo_t = TransmitPdo<ObjectDictionary>;
 
-	CanopenNode(uint8_t nodeId, Map map) : nodeId_(nodeId), accessHandlers(map){};
+	CanopenNode(uint8_t nodeId, Map map) : nodeId_(nodeId), accessHandlers(map) {};
 
-	CanopenNode(uint8_t nodeId) : CanopenNode(nodeId, constructHandlerMap(nodeId)){};
+	CanopenNode(uint8_t nodeId) : CanopenNode(nodeId, constructHandlerMap(nodeId)) {};
 
 	void
 	updateHandlers(Map map);
@@ -42,11 +42,11 @@ public:
 	setValueChanged(Address address);
 
 	void
-	processMessage(const modm::can::Message& message);
+	processMessage(bool isInSyncWindow, const modm::can::Message& message);
 
 	template<typename MessageCallback>
 	void
-	update(MessageCallback&& cb);
+	update(bool isInSync, MessageCallback&& cb);
 
 	std::vector<modm_canopen::Address>
 	getActiveTPDOAddrs();

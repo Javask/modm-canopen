@@ -58,7 +58,7 @@ CanopenNode<OD, Protocols...>::toValue(Address address, std::span<const uint8_t>
 	const bool sizeIsValid =
 		(objectSize <= data.size()) && ((size == -1) || (size == int8_t(objectSize)));
 	if (!sizeIsValid) { return {}; }
-	return valueFromBytes(entry->dataType, data.data());
+	return valueFromBytes(entry->dataType, data);
 }
 
 template<typename OD, typename... Protocols>
@@ -78,7 +78,7 @@ CanopenNode<OD, Protocols...>::write(Address address, std::span<const uint8_t> d
 	auto handler = getWriteHandler(address);
 	if (handler)
 	{
-		const Value value = valueFromBytes(entry->dataType, data.data());
+		const Value value = valueFromBytes(entry->dataType, data);
 		const auto result = callWriteHandler(*handler, value);
 		if (result == SdoErrorCode::NoError) { setValueChanged(address); }
 
@@ -113,27 +113,33 @@ CanopenNode<OD, Protocols...>::read(Address address) -> std::variant<Value, SdoE
 
 template<typename OD, typename... Protocols>
 void
-CanopenNode<OD, Protocols...>::processMessage(const modm::can::Message& message)
+CanopenNode<OD, Protocols...>::processMessage(bool isInSyncWindow,
+											  const modm::can::Message& message)
 {
 	std::unique_lock lock(pdoMutex_);
 	for (auto& rpdo : receivePdos_)
 	{
-		rpdo.processMessage(message,
-							[this](Address address, Value value) { write(address, value); });
+		if (rpdo.getTransmitMode().isAsync() ||
+			(rpdo.getTransmitMode().isOnSync() && isInSyncWindow))
+		{
+			rpdo.processMessage(message,
+								[this](Address address, Value value) { write(address, value); });
+		}
 	}
 }
 
 template<typename OD, typename... Protocols>
 template<typename MessageCallback>
 void
-CanopenNode<OD, Protocols...>::update(MessageCallback&& cb)
+CanopenNode<OD, Protocols...>::update(bool isInSync, MessageCallback&& cb)
 {
 	std::unique_lock lock(pdoMutex_);
 	for (auto& tpdo : transmitPdos_)
 	{
 		if (tpdo.isActive())
 		{
-			auto message = tpdo.nextMessage([this](Address address) { return read(address); });
+			auto message =
+				tpdo.nextMessage(isInSync, [this](Address address) { return read(address); });
 			if (message) { std::forward<MessageCallback>(cb)(*message); }
 		}
 	}

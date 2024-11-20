@@ -10,6 +10,7 @@
 #include <numeric>
 #include <optional>
 #include <utility>
+#include <span>
 
 #include "sdo_error.hpp"
 

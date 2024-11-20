@@ -74,9 +74,10 @@ public:
 	static std::vector<modm_canopen::Address>
 	getActiveRPDOAddrs(uint8_t id);
 
-	template<typename MessageCallback>
-	static void
-	setHeartbeatTimer(modm::Clock::duration duration, MessageCallback&& sendMessage);
+	static bool
+	isInSyncWindow();
+	static uint8_t
+	syncCounter();
 
 private:
 	friend SdoClient_t;
@@ -85,12 +86,17 @@ private:
 	static inline std::mutex devicesMutex_{};
 	static inline std::map<uint8_t, Device_t> devices_{};
 
-	static inline std::mutex heartbeatTimerMutex_{};
-	static inline modm::PeriodicTimer heartBeatTimer_{100ms};
+	static inline std::mutex syncTimerMutex_{};
+	static inline uint8_t syncCounterOverflow_{0};
+	static inline uint8_t lastSyncCounter_{0};
+	static inline uint32_t syncCobId_{0x80};
+	static inline modm::PrecisePeriodicTimer syncTimer_{200ms};
+	static inline modm::PreciseClock::duration syncWindowDuration_{100ms};
+	static inline modm::PreciseClock::time_point lastSyncTime_{};
 
 	template<typename MessageCallback>
 	static void
-	sendHeartbeat(MessageCallback&& sendMessage);
+	sendSync(MessageCallback&& sendMessage);
 
 public:
 	// TODO: replace return value with std::expected like type, add error code to read handler
