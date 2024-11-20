@@ -17,4 +17,20 @@ nmtStateToString(NMTState state)
 			return "Invalid";
 	}
 }
+
+std::optional<NMTState>
+toNMTState(uint8_t value)
+{
+	switch (value)
+	{
+		case (uint8_t)NMTState::Stopped:
+			return NMTState::Stopped;
+		case (uint8_t)NMTState::PreOperational:
+			return NMTState::PreOperational;
+		case (uint8_t)NMTState::Operational:
+			return NMTState::Operational;
+		default:
+			return {};
+	}
+}
 }  // namespace modm_canopen
