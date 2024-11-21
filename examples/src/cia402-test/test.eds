@@ -1505,7 +1505,7 @@ DefaultValue=1
 PDOMapping=1
 
 [6096]
-ParameterName=Velocity Factor 1
+ParameterName=Velocity Factor 2
 ObjectType=0x9
 SubNumber=2
 
