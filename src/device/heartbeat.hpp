@@ -13,7 +13,7 @@ namespace modm_canopen
 namespace detail
 {
 
-void
+inline void
 makeHeartbeatMSG(uint8_t canId, modm::can::Message &message, uint8_t mode)
 {
 	message = modm::can::Message{0x700 + (uint32_t)canId, 1};
