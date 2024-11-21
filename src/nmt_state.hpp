@@ -7,6 +7,7 @@ namespace modm_canopen
 enum class NMTState : uint8_t
 {
 	// Initialisation - Unsupported
+	BootUp = 0,
 	Stopped = 4,
 	PreOperational = 127,
 	Operational = 5,

@@ -7,6 +7,8 @@ nmtStateToString(NMTState state)
 {
 	switch (state)
 	{
+		case NMTState::BootUp:
+			return "BootUp";
 		case NMTState::Stopped:
 			return "Stopped";
 		case NMTState::PreOperational:
@@ -23,6 +25,8 @@ toNMTState(uint8_t value)
 {
 	switch (value)
 	{
+		case (uint8_t)NMTState::BootUp:
+			return NMTState::BootUp;
 		case (uint8_t)NMTState::Stopped:
 			return NMTState::Stopped;
 		case (uint8_t)NMTState::PreOperational:
