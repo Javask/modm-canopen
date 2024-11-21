@@ -84,8 +84,6 @@ public:
 	PdoMapping
 	mapping(uint_fast8_t index) const;
 
-	void
-	setTransmitMode(uint8_t value);
 	const TransmitMode&
 	getTransmitMode() const;
 

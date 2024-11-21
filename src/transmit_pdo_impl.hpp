@@ -55,7 +55,7 @@ std::optional<modm::can::Message>
 TransmitPdo<OD>::nextMessage(bool inSync, Callback &&cb)
 {
 	const bool sendOnSync = PdoObject<OD>::getTransmitMode().isOnSync() &&
-							syncCount_ > PdoObject<OD>::getTransmitMode().value &&
+							syncCount_ >= PdoObject<OD>::getTransmitMode().value &&
 							(inSync || PdoObject<OD>::getTransmitMode().value == 0);
 	const bool sendAsync = PdoObject<OD>::getTransmitMode().isAsync() && sendOnEvent_.send();
 	const bool sendRTRSync =
