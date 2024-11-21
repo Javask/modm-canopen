@@ -39,9 +39,10 @@ StateMachine::setReactionDone()
 	}
 }
 
-StateMachine::StateMachine(uint16_t raw)
+StateMachine::StateMachine(uint16_t raw, uint16_t control)
 {
 	state_ = parseState(raw);
+	control_ = control;
 	status_ = raw & ~StateMask;
 }
 
@@ -73,7 +74,7 @@ StateMachine::parseState(uint16_t val)
 }
 
 bool
-available(const Command& s, State state_)
+StateMachine::available(const Command& s, State state_)
 {
 	state_ = (State)((uint16_t)state_ & StateMask);
 	return s.availableIn[0] == state_ || s.availableIn[1] == state_ || s.availableIn[2] == state_;
