@@ -1,6 +1,7 @@
 #ifndef CANOPEN_CIA402_PROTOCOL_HPP
 #define CANOPEN_CIA402_PROTOCOL_HPP
 #include <modm/architecture/interface/can_message.hpp>
+#include <modm/processing/timer.hpp>
 #include "../device/handler_map.hpp"
 #include "cia402_objects.hpp"
 #include "operating_mode.hpp"
@@ -95,8 +96,6 @@ private:
 	static inline int16_t targetTorqueRatio_{0};  // [-1000,1000]*motorRatedTorque_/1000
 	static inline int16_t torqueDemandRatio_{0};  // [-1000,1000]*motorRatedTorque_/1000
 	static inline uint32_t motorRatedTorque_{0};  // mNm
-	static inline uint32_t torqueSlope_{0};       // [0,1000]*motorRatedTorque_/1000 * 1/s
-	static inline ProfileType torqueProfile_{ProfileType::LinearRamp};
 
 	static inline int32_t velocityDemand_{0};
 	static inline uint16_t velocityWindow_{0};
@@ -108,21 +107,21 @@ private:
 	static inline uint32_t maxProfileVelocity_{0};
 	static inline uint32_t maxMotorSpeed_{0};
 	static inline uint32_t maxAcceleration_{0};
-	static inline uint32_t maxDeceleration_{0};
 	static inline uint32_t profileAcceleration_{0};
-	static inline uint32_t profileDeceleration_{0};
 	static inline uint32_t quickStopDeceleration_{0};
 	static inline ProfileType motionProfile_{ProfileType::LinearRamp};
 
 	static void
 	profileVelocityUpdate(uint32_t deceleration, uint32_t acceleration, int32_t target);
 
-	static constexpr uint32_t supportedModesBitfield_ = 0b1110'0000'0000'0000'0000'0000'0110'1111;
+	static constexpr uint32_t supportedModesBitfield_ = 0b1110'0000'0000'0000'0000'0001'1000'0010;
 	static inline bool
 	isSupported(OperatingMode mode);
 
 	static inline modm::PreciseClock::time_point lastUpdateTime_{};
 	static inline modm::PreciseClock::duration lastTimestep_{};
+	static inline uint32_t lastTimeStepRough_{};  // 10^-1ms
+	static inline modm::PrecisePeriodicTimer updateTimer_{1ms};
 	static inline Inputs inputs_{};
 	static inline Outputs outputs_{};
 

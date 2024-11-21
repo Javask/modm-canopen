@@ -26,8 +26,9 @@ template<uint8_t Axis>
 void
 CiA402<Axis>::profileVelocityUpdate(uint32_t deceleration, uint32_t acceleration, int32_t target)
 {
-	//TODO
+	// TODO
 }
+
 
 template<uint8_t Axis>
 void
@@ -92,8 +93,17 @@ template<typename Device, typename MessageCallback>
 void
 CiA402<Axis>::update(MessageCallback &&)
 {
+	// Only update every x ms
+	if (!updateTimer_.execute()) return;
+
 	const auto now = modm::PreciseClock::now();
-	if (lastUpdateTime_.time_since_epoch().count() != 0) { lastTimestep_ = now - lastUpdateTime_; }
+	if (lastUpdateTime_.time_since_epoch().count() != 0)
+	{
+		lastTimestep_ = now - lastUpdateTime_;
+		// Get a rough idea how long our timestep is
+		lastTimeStepRough_ = lastTimestep_.count() / 100;
+	}
+
 	lastUpdateTime_ = now;
 
 	if (status_.wasChanged())
