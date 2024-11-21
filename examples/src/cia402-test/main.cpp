@@ -76,11 +76,13 @@ main()
 	Device::setValueChanged(Address{0x2002, 0});
 
 	modm::PeriodicTimer timer{100s};
+	modm::PreciseClock::time_point lastSync_{};
 
 	while (true)
 	{
-		if(timer.execute()){
-			modm_canopen::cia402::CiA402<0>::setError();
+		if (timer.execute())
+		{
+			// modm_canopen::cia402::CiA402<0>::setError();
 		}
 		if (can.isMessageAvailable())
 		{
@@ -92,6 +94,16 @@ main()
 			} else
 			{
 				message.identifier &= 0x7FF;
+			}
+			if (message.getIdentifier() == 0x80)
+			{
+				const auto now = modm::PreciseClock::now();
+				if (lastSync_.time_since_epoch().count() != 0)
+				{
+					MODM_LOG_DEBUG << "Received Sync after " << (now - lastSync_).count() << "us"
+								   << modm::endl;
+				}
+				lastSync_ = now;
 			}
 			Device::processMessage(message, sendMessage);
 		}
