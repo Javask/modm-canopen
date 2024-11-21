@@ -1,6 +1,7 @@
 #ifndef CANOPEN_RECEIVE_PDO_HPP
 #error "Do not include this file directly, include receive_pdo.hpp instead!"
 #endif
+#include "emcy_error.hpp"
 
 namespace modm_canopen
 {
@@ -18,7 +19,11 @@ ReceivePdo<OD>::processMessage(const modm::can::Message &message, Callback &&cb)
 		{
 			totalDataSize += PdoObject<OD>::mappings_[i].bitLength / 8;
 		}
-		if (totalDataSize > message.getLength()) { return; }
+		if (totalDataSize > message.getLength())
+		{
+			// TODO set EMCY
+			return;
+		}
 		std::size_t index = 0;
 		for (uint_fast8_t i = 0; i < PdoObject<OD>::mappingCount_; ++i)
 		{
@@ -30,6 +35,7 @@ ReceivePdo<OD>::processMessage(const modm::can::Message &message, Callback &&cb)
 			std::forward<Callback>(cb)(address, value);
 			index += size;
 		}
+		received_ = true;
 	}
 }
 
@@ -52,7 +58,27 @@ bool
 ReceivePdo<OD>::setTransmitMode(uint8_t mode)
 {
 	if (mode > 0xF0 && mode < 0xFE) return false;
+	passedSyncs_ = 0;
+	received_ = false;
 	PdoObject<OD>::mode_.value = mode;
 	return true;
+}
+
+template<typename OD>
+template<typename Device>
+void
+ReceivePdo<OD>::update(bool wasJustInSync)
+{
+	if (wasJustInSync) { passedSyncs_++; }
+	if (received_ && passedSyncs_ != PdoObject<OD>::mode_.value)
+	{
+		// Missed RPDO
+		if (PdoObject<OD>::mode_.value > 0 && PdoObject<OD>::mode_.isOnSync())
+		{
+			Device::setError(EMCYError::RPDOTimeout);
+		}
+	}
+	if (passedSyncs_ >= PdoObject<OD>::mode_.value) { passedSyncs_ = 0; }
+	received_ = false;
 }
 }  // namespace modm_canopen

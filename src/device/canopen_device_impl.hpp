@@ -154,9 +154,11 @@ template<typename OD, typename... Protocols>
 void
 CanopenDevice<OD, Protocols...>::handleSync(const modm::can::Message& message)
 {
+	if (syncPeriod_.count() == 0) return;  // SYNC is disabled
 	if ((syncCounterOverflow_ == 0 && message.getLength() != 0) ||
 		(syncCounterOverflow_ != 0 && message.getLength() != 1))
 	{
+		// Wrong packet size
 		setError(EMCYError::UnexpectedSYNCData);
 	}
 	if (syncCounterOverflow_ != 0)
@@ -167,11 +169,23 @@ CanopenDevice<OD, Protocols...>::handleSync(const modm::can::Message& message)
 
 		if (diff > 1 || newCounter > syncCounterOverflow_)
 		{
+			// Wrong SYNC counter value
 			setError(EMCYError::UnexpectedSYNCData);
 		}
 		lastSyncCounter_ = newCounter;
 	}
-	lastSyncTime_ = modm::PreciseClock::now();
+	const auto now = modm::PreciseClock::now();
+	const auto deviation = (int)(now - (lastSyncTime_ + syncPeriod_)).count();
+	if (deviation > 1000)  // More than a millisecond inaccurate
+	{
+		MODM_LOG_DEBUG << "Got SYNC with deviation " << deviation << "us" << modm::endl;
+		setError(EMCYError::GenericCommunicationError);
+	} else
+	{
+		// Reset after one packet on time
+		missedSync_ = false;
+	}
+	lastSyncTime_ = now;
 
 	for (auto& tpdo : transmitPdos_) { tpdo.sync(); }
 }
@@ -187,6 +201,7 @@ CanopenDevice<OD, Protocols...>::sendEMCY(MessageCallback&& cb)
 		lastEmcyTime_ = modm::PreciseClock::now();
 		modm::can::Message msg{};
 		msg.setIdentifier(emcyCobId_);
+		msg.setExtended(false);
 		*((uint16_t*)msg.data) = (uint16_t)emcy_;
 		msg.data[2] = errorReg_;
 		std::copy(manufacturerError_.begin(), manufacturerError_.end(),
@@ -251,6 +266,21 @@ template<typename MessageCallback>
 void
 CanopenDevice<OD, Protocols...>::update(MessageCallback&& cb)
 {
+	const auto isInSync = isInSyncWindow();
+	justLeftSyncWindow_ = (wasInSyncWindow_ && !isInSync);
+	wasInSyncWindow_ = isInSync;
+	if (syncPeriod_.count() != 0 && lastSyncTime_.time_since_epoch().count() != 0)
+	{
+		const auto now = modm::PreciseClock::now();
+		const auto timeSinceSync = now - lastSyncTime_;
+		if (timeSinceSync > syncPeriod_ + 1ms && !missedSync_)
+		{
+			MODM_LOG_DEBUG << "Missed Sync by more than 1 ms!" << modm::endl;
+			setError(EMCYError::GenericCommunicationError);
+			missedSync_ = true;
+		}
+	}
+
 	if (emcyDue_ && (lastEmcyTime_.time_since_epoch().count() == 0 ||
 					 modm::PreciseClock::now() - lastEmcyTime_ > emcyInhibitTime_))
 	{
@@ -266,6 +296,13 @@ CanopenDevice<OD, Protocols...>::update(MessageCallback&& cb)
 				auto message = tpdo.nextMessage(isInSyncWindow(),
 												[](Address address) { return read(address); });
 				if (message) { std::forward<MessageCallback>(cb)(*message); }
+			}
+		}
+		for (auto& rpdo : receivePdos_)
+		{
+			if (rpdo.isActive() && rpdo.getTransmitMode().isOnSync())
+			{
+				rpdo.template update<CanopenDevice>(wasInSyncWindow_);
 			}
 		}
 		(Protocols::template update<CanopenDevice, MessageCallback>(
@@ -407,6 +444,13 @@ CanopenDevice<OD, Protocols...>::registerHandlers() -> HandlerMap<OD>
 		if ((newId & 0x1FFFF800) != 0 && (val & 0x20000000u) == 0)
 			return SdoErrorCode::InvalidValue;
 		syncCobId_ = newId;
+		return SdoErrorCode::NoError;
+	});
+
+	handlers.template setReadHandler<Address{0x1006, 0}>(
+		+[]() { return (uint32_t)syncPeriod_.count(); });
+	handlers.template setWriteHandler<Address{0x1006, 0}>(+[](uint32_t val) {
+		syncPeriod_ = std::chrono::microseconds(val);
 		return SdoErrorCode::NoError;
 	});
 

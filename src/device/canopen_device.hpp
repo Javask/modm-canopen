@@ -86,6 +86,10 @@ private:
 	static inline uint32_t syncCobId_{0x80};
 	static inline modm::PreciseClock::duration syncWindowDuration_{100ms};
 	static inline modm::PreciseClock::time_point lastSyncTime_{};
+	static inline modm::PreciseClock::duration syncPeriod_{200ms};
+	static inline bool wasInSyncWindow_{false};
+	static inline bool justLeftSyncWindow_{false};
+	static inline bool missedSync_{false};
 
 	static inline constinit std::array<ReceivePdo_t, MaxRPDOCount> receivePdos_;
 	static inline constinit std::array<TransmitPdo_t, MaxTPDOCount> transmitPdos_;

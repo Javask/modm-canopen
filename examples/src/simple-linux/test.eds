@@ -46,18 +46,19 @@ Dummy0007=0
 Lines=0
 
 [MandatoryObjects]
-SupportedObjects=11
+SupportedObjects=12
 1=0x1000
 2=0x1001
 3=0x1003
 4=0x1005
-5=0x1007
-6=0x1014
-7=0x1015
-8=0x1016
-9=0x1017
-10=0x1018
-11=0x1019
+5=0x1006
+6=0x1007
+7=0x1014
+8=0x1015
+9=0x1016
+10=0x1017
+11=0x1018
+12=0x1019
 
 [1000]
 ParameterName=Device type
@@ -105,6 +106,13 @@ AccessType=rw
 DefaultValue=0
 PDOMapping=0
 
+[1006]
+ParameterName=Communication cycle period
+ObjectType=0x7
+DataType=0x0007
+AccessType=rw
+DefaultValue=0
+PDOMapping=0
 
 [1007]
 ParameterName=Communication window duration

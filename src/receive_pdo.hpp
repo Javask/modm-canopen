@@ -22,12 +22,18 @@ public:
 	void
 	processMessage(const modm::can::Message &message, Callback &&cb);
 
+	template<typename Device>
+	void update(bool justLeftSyncWindow);
+
 	bool
 	setTransmitMode(uint8_t mode);
 
 protected:
 	virtual SdoErrorCode
 	validateMapping(PdoMapping mapping) override;
+
+	bool received_{false};
+	uint8_t passedSyncs_{0};
 };
 }  // namespace modm_canopen
 #include "receive_pdo_impl.hpp"
