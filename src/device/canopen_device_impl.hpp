@@ -176,7 +176,8 @@ CanopenDevice<OD, Protocols...>::handleSync(const modm::can::Message& message)
 	}
 	const auto now = modm::PreciseClock::now();
 	const auto deviation = (int)(now - (lastSyncTime_ + syncPeriod_)).count();
-	if (deviation > 1000)  // More than a millisecond inaccurate
+	if (lastSyncTime_.time_since_epoch().count() != 0 && syncPeriod_.count() != 0 &&
+		deviation > 1000)  // More than a millisecond inaccurate
 	{
 		MODM_LOG_DEBUG << "Got SYNC with deviation " << deviation << "us" << modm::endl;
 		setError(EMCYError::GenericCommunicationError);
@@ -398,7 +399,11 @@ CanopenDevice<OD, Protocols...>::setError(EMCYError emcy)
 	{
 		// Handle communication error
 		// TODO implement 0x1029.1
-		if (state_ == NMTState::Operational) state_ = NMTState::PreOperational;
+		if (state_ == NMTState::Operational)
+		{
+			MODM_LOG_ERROR << "Communication Error! Going into PreOperational!" << modm::endl;
+			state_ = NMTState::PreOperational;
+		}
 	}
 }
 
