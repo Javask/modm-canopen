@@ -48,6 +48,9 @@ public:
 	void
 	update(bool isInSync, MessageCallback&& cb);
 
+	void
+	sync();
+
 	std::vector<modm_canopen::Address>
 	getActiveTPDOAddrs();
 	std::vector<modm_canopen::Address>

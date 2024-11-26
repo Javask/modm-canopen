@@ -225,7 +225,17 @@ CanopenMaster<Devices...>::update(MessageCallback &&cb)
 
 	{
 		std::unique_lock lock(syncTimerMutex_);
-		if (syncTimer_.execute()) { sendSync(std::forward<MessageCallback>(cb)); }
+		if (syncTimer_.execute())
+		{
+			sendSync(std::forward<MessageCallback>(cb));
+			lock.unlock();
+			lock = std::unique_lock<std::mutex>(devicesMutex_);
+			for (auto &pair : devices_)
+			{
+				std::visit(overloaded{[](std::monostate) {}, [](auto &&arg) { arg->sync(); }},
+						   pair.second);
+			}
+		}
 	}
 }
 

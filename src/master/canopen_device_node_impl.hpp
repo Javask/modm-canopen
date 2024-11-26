@@ -32,6 +32,17 @@ CanopenNode<OD, Protocols...>::write(Address address, Value value) -> SdoErrorCo
 }
 
 template<typename OD, typename... Protocols>
+void
+CanopenNode<OD, Protocols...>::sync()
+{
+	std::unique_lock lock(pdoMutex_);
+	for (auto& tpdo : transmitPdos_)
+	{
+		if (tpdo.isActive()) { tpdo.sync(); }
+	}
+}
+
+template<typename OD, typename... Protocols>
 std::optional<ReadHandlerRT>
 CanopenNode<OD, Protocols...>::getReadHandler(Address addr)
 {
