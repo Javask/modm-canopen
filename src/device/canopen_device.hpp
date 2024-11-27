@@ -84,9 +84,9 @@ private:
 	static inline uint8_t syncCounterOverflow_{0};
 	static inline uint8_t lastSyncCounter_{0};
 	static inline uint32_t syncCobId_{0x80};
-	static inline modm::PreciseClock::duration syncWindowDuration_{100ms};
+	static inline modm::PreciseClock::duration syncWindowDuration_{25ms};
 	static inline modm::PreciseClock::time_point lastSyncTime_{};
-	static inline modm::PreciseClock::duration syncPeriod_{200ms};
+	static inline modm::PreciseClock::duration syncPeriod_{50ms};
 	static inline bool wasInSyncWindow_{false};
 	static inline bool justLeftSyncWindow_{false};
 	static inline bool missedSync_{false};
