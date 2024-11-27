@@ -90,8 +90,8 @@ private:
 	static inline uint8_t syncCounterOverflow_{0};
 	static inline uint8_t lastSyncCounter_{0};
 	static inline uint32_t syncCobId_{0x80};
-	static inline modm::PrecisePeriodicTimer syncTimer_{200ms};
-	static inline modm::PreciseClock::duration syncWindowDuration_{100ms};
+	static inline modm::PrecisePeriodicTimer syncTimer_{50ms};
+	static inline modm::PreciseClock::duration syncWindowDuration_{25ms};
 	static inline modm::PreciseClock::time_point lastSyncTime_{};
 
 	template<typename MessageCallback>
