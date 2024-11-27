@@ -12,6 +12,7 @@ TransmitPdo<OD>::getMessage(Callback &&cb)
 {
 	rtr_ = false;
 	syncCount_ = 0;
+	hasReceivedSync_ = false;
 	sendOnEvent_.updated_ = false;
 
 	modm::can::Message message{PdoObject<OD>::canId_};
@@ -39,6 +40,7 @@ template<typename OD>
 void
 TransmitPdo<OD>::sync()
 {
+	hasReceivedSync_ = true;
 	syncCount_++;
 }
 
@@ -54,14 +56,19 @@ template<typename Callback>
 std::optional<modm::can::Message>
 TransmitPdo<OD>::nextMessage(bool inSync, Callback &&cb)
 {
-	const bool sendOnSync = PdoObject<OD>::getTransmitMode().isOnSync() &&
-							syncCount_ >= PdoObject<OD>::getTransmitMode().value &&
-							(inSync || PdoObject<OD>::getTransmitMode().value == 0);
-	const bool sendAsync = PdoObject<OD>::getTransmitMode().isAsync() && sendOnEvent_.send();
+	const bool sendOnEvent = sendOnEvent_.send();
+
+	const bool sendOnSyncEventDriven =
+		PdoObject<OD>::getTransmitMode().value == 0 && sendOnEvent && hasReceivedSync_;
+	const bool sendOnSyncCounter = PdoObject<OD>::getTransmitMode().isOnSync() &&
+								   PdoObject<OD>::getTransmitMode().value != 0 &&
+								   hasReceivedSync_ && inSync &&
+								   syncCount_ >= PdoObject<OD>::getTransmitMode().value;
+	const bool sendAsync = PdoObject<OD>::getTransmitMode().isAsync() && sendOnEvent;
 	const bool sendRTRSync =
 		(rtr_ && PdoObject<OD>::getTransmitMode().value == 0xFC && inSync && syncCount_ != 0);
 
-	const bool send = sendOnSync || sendAsync || sendRTRSync;
+	const bool send = sendOnSyncCounter || sendOnSyncEventDriven || sendAsync || sendRTRSync;
 
 	if (send)
 	{

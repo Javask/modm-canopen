@@ -84,6 +84,7 @@ private:
 	TransmitMode transmitMode_{};
 	SendOnEvent sendOnEvent_{};
 	uint8_t syncCount_{0};
+	bool hasReceivedSync_{false};
 	bool rtr_{false};
 
 	template<typename Callback>
