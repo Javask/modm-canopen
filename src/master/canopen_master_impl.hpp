@@ -250,6 +250,20 @@ CanopenMaster<Devices...>::isInSyncWindow()
 }
 
 template<typename... Devices>
+modm::PreciseClock::duration
+CanopenMaster<Devices...>::getSyncTimerPeriod()
+{
+	return syncTimer_.interval();
+}
+
+template<typename... Devices>
+modm::PreciseClock::duration
+CanopenMaster<Devices...>::getSyncWindowDuration()
+{
+	return syncWindowDuration_;
+}
+
+template<typename... Devices>
 template<typename MessageCallback>
 void
 CanopenMaster<Devices...>::sendSync(MessageCallback &&sendMessage)
@@ -260,8 +274,8 @@ CanopenMaster<Devices...>::sendSync(MessageCallback &&sendMessage)
 		if (lastSyncCounter_ >= syncCounterOverflow_) { lastSyncCounter_ = 0; }
 		const modm::can::Message msg(syncCobId_, 1, &lastSyncCounter_, false);
 		sendMessage(msg);
-	}
-	else{
+	} else
+	{
 		modm::can::Message msg(syncCobId_, 0);
 		msg.setExtended(false);
 		sendMessage(msg);

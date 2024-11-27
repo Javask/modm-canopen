@@ -79,6 +79,11 @@ public:
 	static uint8_t
 	syncCounter();
 
+	static modm::PreciseClock::duration
+	getSyncTimerPeriod();
+	static modm::PreciseClock::duration
+	getSyncWindowDuration();
+
 private:
 	friend SdoClient_t;
 	static inline uint8_t masterId_{0};
